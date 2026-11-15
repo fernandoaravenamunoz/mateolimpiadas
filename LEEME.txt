@@ -1,0 +1,18 @@
+Archivos fuente de la plataforma (opcional)
+===========================================
+
+index.html se arma a partir de estos archivos:
+
+  src.html      La página: estructura, estilos y toda la lógica del torneo.
+                Las marcas __PROBLEMAS__, __LOGO__, __LEON__ e __IMAGES__ se reemplazan al construir.
+  problemas.js  El banco de problemas de cada nivel y la reserva de desempates.
+  assets/       La insignia del colegio, el león y las imágenes de las preguntas de 3° básico.
+  build.py      Une todo y escribe index.html (incrusta las imágenes en base64).
+
+Para reconstruir index.html:
+
+  python3 build.py
+
+No hace falta usar estos archivos: index.html funciona por sí solo y el banco de
+problemas también se puede editar desde la misma plataforma, en Configuración →
+Banco de problemas (y guardar un respaldo con Exportar).
