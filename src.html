@@ -695,7 +695,7 @@ const ACTS = {
   problemas:{nombre:'Problemas', l1:'Problemas', l2:'', icon:'💡', color:'#d6336c', modo:'campana'}
 };
 const DEFAULT_CFG = {
-  calc:{tiempo:60,puntos:1}, recta:{tiempo:30,puntos:3,cantidad:1},
+  calc:{tiempo:60,puntos:1}, recta:{tiempo:30,puntos:2,cantidad:1},
   magico:{tiempo:180,puntos:3,cantidad:1}, kakooma:{tiempo:150,puntos:3,cantidad:1},
   cadena:{tiempo:20,puntos:2,cantidad:1}, problemas:{tiempo:60,puntos:1,cantidad:1}
 };
@@ -1139,6 +1139,7 @@ function normNiv(base){
     sortGames(v);
     if((v.calcRules||0) < 4){ v.calc = null; v.calcRules = 4; }   // 18 nov.: doble/triple en 5° y 6°, 15 rápidas por turno   // criterios de cálculo mental del 18 nov. 2026: pauta nueva
     if((v.cfgV||1) < 2){ for(const a in v.cfg.pre){ if(DEFAULT_CFG[a].cantidad!==undefined) v.cfg.pre[a].cantidad = 1; if(v.cfg.fin[a]) delete v.cfg.fin[a].cantidad; } v.cfgV = 2; }
+    if((v.cfgV||1) < 3){ v.cfg.pre.recta.puntos = 2; if(v.cfg.fin.recta) delete v.cfg.fin.recta.puntos; v.cfgV = 3; }   // recta: 2 por acierto, 1 a un espacio
     if(!Array.isArray(v.rondas) || !v.rondas.length) v.rondas = [newRonda()];
     v.rondas.forEach(r=>{ r.jug = Array.isArray(r.jug)&&r.jug.length ? r.jug : ['','','']; r.aus = r.aus||[]; r.res = r.res||null; });
     v.final = v.final || null;
@@ -1574,7 +1575,7 @@ function exampleHTML(act, lv){
       `Cada jugador ubicará <b>${gc('recta').cantidad} número${gc('recta').cantidad===1?'':'s'}</b>, por turnos.`,
       `Aparece un número: <b>pasa adelante y señala con el dedo</b> dónde va en la recta.`,
       `El conductor marca con el mouse donde indicaste y confirma.`,
-      `Mientras más cerca, más puntos: 🎯 muy cerca <b>${pts}</b> · cerca <b>${Math.max(pts-1,0)}</b> · a una marca <b>${Math.max(pts-2,0)}</b>.`],
+      `Puntaje: 🎯 si aciertas la marca, <b>${pts} ${plural(pts)}</b> · si quedas <b>a un espacio</b> del valor, <b>1 punto</b> · más lejos, 0.`],
       ex:`<div class="et">Ejemplo · ubicar ${r.numH}</div>${rectaSVG(r,{solved:true})}<p>Entre ${r.labels[0].t} y ${r.labels[r.labels.length-1].t} hay ${r.div} espacios iguales: cada marca vale <b>${r.stepH}</b>. Contando ${r.mark} marca${r.mark===1?'':'s'} desde ${r.labels[0].t} se llega a ${r.numH}.</p>`};
   }
   if(act==='magico'){
@@ -1663,7 +1664,8 @@ function magicHTML(it, rev){
     <div class="target"><small>${it.op==='mul'?'Producto mágico':'Suma mágica'}</small><b>${qH(it.S,it.modo)}</b></div>
   </div>`;
 }
-function rectaPts(d){ const m = gc('recta').puntos; return d<=0.25 ? m : d<=0.5 ? Math.max(m-1,0) : d<=1 ? Math.max(m-2,0) : 0; }
+/* recta: se cuenta la marca más cercana a donde señaló. Acierto = puntos del juego (2 por defecto); a un espacio = 1; más lejos = 0 */
+function rectaPts(d){ const m = gc('recta').puntos, e = Math.round(d); return e===0 ? m : e===1 ? Math.min(1,m) : 0; }
 
 /* ---------- render principal ---------- */
 /* marcador: primer nombre, inicial del apellido y curso → "Sofía G. (4°A)" */
@@ -1799,7 +1801,7 @@ function itemHTML(){
     body += `<div class="place"><span class="lab">Ubica en la recta</span><span class="num">${it.numH}</span></div>`;
     body += rectaSVG(it, {click:!st.conf, id:'rectaSvg', user:st.x, exact:st.conf});
     if(st.conf){
-      const d = Math.abs(st.x - it.mark), msg = st.pts===gc('recta').puntos ? '🎯 ¡Diana!' : st.pts>0 ? '¡Bien cerca!' : 'Esta vez quedó lejos';
+      const d = Math.abs(st.x - it.mark), msg = st.pts===gc('recta').puntos ? '🎯 ¡Justo en la marca!' : st.pts>0 ? '¡A un espacio! 1 punto' : 'Esta vez quedó lejos';
       body += `<div class="answer"><div class="result">${msg} ${esc(who.name)} gana <span style="color:var(--ok)">+${st.pts}</span></div>
         <div class="exp" style="text-align:center">El número ${it.ans} está en la marca ${it.mark}; cada marca vale ${it.stepH}. Quedó a ${N(Math.round(d*100)/100)} marca${Math.round(d*100)===100?'':'s'} del lugar exacto.</div></div>`;
     } else body += `<p class="hint" style="text-align:center;font-size:1rem">${st.x==null?'Conductor: haz clic donde el jugador indica con el dedo.':'Puedes volver a hacer clic para ajustar. Luego presiona «Confirmar ubicación».'}</p>`;
@@ -2686,7 +2688,7 @@ async function buildPautaNivelPDF(lv, solo){
         K.y += 2;
       }
       else if(a==='recta'){
-        K.sub(`${NAME[a]} · ${c.cantidad} ${c.cantidad===1?'número':'números'} por jugador · 3, 2 o 1 punto según cercanía`);
+        K.sub(`${NAME[a]} · ${c.cantidad} ${c.cantidad===1?'número':'números'} por jugador · ${c.puntos} ${c.puntos===1?'punto':'puntos'} si acierta la marca, 1 a un espacio`);
         (G.recta||[]).slice(0, S.names.length).forEach((t,ti)=>{
           K.need(10); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...PDFC.NAVY); doc.text(`Turno ${ti+1}: ${pdfText(S.names[ti])}`, K.M, K.y); K.y += 5.2;
           t.forEach((r,k)=>{ K.need(5.4); doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(k<c.cantidad?30:140, k<c.cantidad?30:140, k<c.cantidad?30:140);
