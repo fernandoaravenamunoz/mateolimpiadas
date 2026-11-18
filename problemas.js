@@ -2,7 +2,7 @@ const FIG_5 = '<svg viewBox="0 0 270 150" width="420"><polygon points="25,20 187
 /* C = respuesta corta · A = alternativas.  oa = Objetivo de Aprendizaje basal (Actualización de la Priorización Curricular, MINEDUC 2023) */
 const C = (oa, tema, texto, respuesta, explicacion, puntos=1) => ({oa, tema, tipo:'corta', texto, respuesta, explicacion, puntos});
 const A = (oa, tema, texto, opciones, correcta, explicacion, puntos=1) => ({oa, tema, tipo:'alt', texto, opciones, correcta, explicacion, puntos});
-const BANK_VERSION = 5;
+const BANK_VERSION = 7;
 /* 20 problemas adicionales por nivel (4° a 6°), alineados a los OA basales */
 const EXTRA = {
  '4':[
@@ -73,7 +73,10 @@ const EXTRA = {
  ]
 };
 
-const I = (img, oa, tema, texto, respuesta, explicacion, puntos=1) => ({img, oa, tema, tipo:'corta', texto, respuesta, explicacion, puntos});
+const I = (img, oa, tema, texto, respuesta, explicacion, puntos=1) => Object.assign({img, oa, tema, tipo:'corta', texto, respuesta, explicacion, puntos}, P3_OFF.includes(img)?{off:true}:{});
+/* 3°: problemas del año pasado desactivados (no se juegan) por no ajustarse a los criterios de 3° acordados con coordinación (nov. 2026):
+   multiplicación fuera de las tablas del 2, 5 y 10, división, números sobre 1.000 o varios cálculos con reserva. Se pueden reactivar desde el editor. */
+const P3_OFF = ['p3_01', 'p3_05', 'p3_07', 'p3_09', 'p3_13', 'p3_14', 'p3_15', 'p3_16', 'p3_19', 'p3_20'];
 /* Preguntas usadas en la olimpiada del año pasado con 3° básico (con su imagen original) */
 const P3_ANTERIOR = [
   I('p3_01','OA 10','Dinero','¿Cuánto dinero hay? (billetes y monedas)','$5.230','5 billetes de $1.000 = $5.000 ; 2 monedas de $100 = $200 ; 3 monedas de $10 = $30 ; total $5.230',2),
@@ -101,13 +104,13 @@ const P3_ANTERIOR = [
 /* Reserva de desempates: 15 problemas por nivel, de respuesta única y rápida, alineados a los OA basales */
 const DESEMPATE = {
  '3':[
-  C('OA 6','Adición','¿Cuánto es 250 + 250?','500','250 + 250 = 500'),
+  C('OA 6','Adición','¿Cuánto es 200 + 300?','500','2 centenas + 3 centenas = 5 centenas = 500'),
   C('OA 5','Valor posicional','¿Cuánto vale el dígito 4 en el número 248?','40','El 4 está en las decenas: 4 decenas = 40'),
-  C('OA 8','Multiplicación','Un auto tiene 4 ruedas.\n¿Cuántas ruedas tienen 6 autos?','24 ruedas','6 · 4 = 24'),
+  C('OA 8','Multiplicación','Una mano tiene 5 dedos.\n¿Cuántos dedos hay en 4 manos?','20 dedos','4 · 5 = 20'),
   C('OA 12','Patrones','¿Qué número sigue?\n5, 10, 15, 20, ___','25','El patrón aumenta de 5 en 5.'),
   C('OA 10','Dinero','Tengo 3 monedas de $100 y 1 moneda de $50.\n¿Cuánto dinero tengo?','$350','100 + 100 + 100 + 50 = 350'),
   C('OA 3','Comparar números','¿Cuál número es mayor: 398 o 401?','401','401 tiene 4 centenas y 398 tiene 3.'),
-  C('OA 6','Sustracción','¿Cuánto es 100 − 35?','65','100 − 35 = 65'),
+  C('OA 6','Sustracción','¿Cuánto es 100 − 30?','70','10 decenas − 3 decenas = 7 decenas = 70'),
   C('OA 11','Fracciones','Una pizza se corta en 4 partes iguales y me como 1 parte.\n¿Qué fracción de la pizza me comí?','[[1/4]]','1 parte de un total de 4: un cuarto.'),
   C('OA 21','Perímetro','Un triángulo tiene lados de 4 cm, 5 cm y 6 cm.\n¿Cuál es su perímetro?','15 cm','4 + 5 + 6 = 15'),
   C('OA 15','Figuras 3D','¿Cuántas caras tiene un cubo?','6 caras','Como un dado: 6 caras cuadradas.'),
@@ -170,17 +173,82 @@ const DESEMPATE = {
  ]
 };
 
+/* 40 problemas de la profesora de 5° y 6° básico (nov. 2026). Se intercalan con los del banco (uno y uno) para que salgan desde las primeras rondas.
+   6°: los del «Nivel avanzado» del documento original valen 2 puntos. */
+const EXTRA2 = {
+ '5':[
+  C('OA 6','Adición','En una biblioteca hay 125 libros de cuentos y 78 libros de ciencias.\n¿Cuántos libros hay en total?','203 libros','125 + 78 = 203'),
+  C('OA 6','Dinero','Martina tenía $5.000 y compró un cuaderno de $1.800.\n¿Cuánto dinero le quedó?','$3.200','5.000 − 1.800 = 3.200'),
+  C('OA 3','Multiplicación','Un curso tiene 32 estudiantes. Cada estudiante recibe 3 lápices y 6 cuadernos.\n¿Cuántos lápices se necesitan?','96 lápices','Solo importan los lápices: 32 · 3 = 96'),
+  C('OA 4','División','Un profesor tiene 240 hojas y las reparte por igual entre 8 grupos.\n¿Cuántas hojas recibe cada grupo?','30 hojas','240 : 8 = 30, porque 8 · 30 = 240'),
+  C('OA 6','Adición','Pedro recorrió 350 metros en la mañana y 275 metros en la tarde.\n¿Cuántos metros recorrió en total?','625 metros','350 + 275 = 625'),
+  C('OA 4','División','Andrea compró 2 cajas de chocolates. Reparte solo una de ellas, que tiene 48 chocolates, por igual entre 6 niños.\n¿Cuántos chocolates recibe cada uno?','8 chocolates','Se reparte una sola caja: 48 : 6 = 8'),
+  C('OA 3','Problemas con dinero','Una entrada al cine cuesta $4.500. Cinco amigos compran una entrada cada uno.\n¿Cuánto pagan en total?','$22.500','4.500 · 5 = 22.500'),
+  C('OA 6','Adición','En una granja hay 135 gallinas, 65 patos y 20 conejos.\n¿Cuántas aves hay en total?','200 aves','Los conejos no son aves: 135 + 65 = 200'),
+  C('OA 6','Sustracción','Un colegio compró 500 lápices y ya entregó 275.\n¿Cuántos lápices quedan?','225 lápices','500 − 275 = 225'),
+  C('OA 4','División','Una profesora tiene 90 stickers y los reparte por igual entre 9 estudiantes.\n¿Cuántos stickers recibe cada estudiante?','10 stickers','90 : 9 = 10'),
+  C('OA 4','División','En una excursión participan 96 estudiantes y se forman grupos de 8.\n¿Cuántos grupos se pueden formar?','12 grupos','96 : 8 = 12, porque 8 · 12 = 96'),
+  C('OA 6','Problemas','Una tienda tiene 250 poleras. En la mañana vende 75 y en la tarde vende 85.\n¿Cuántas poleras quedan?','90 poleras','75 + 85 = 160 ; 250 − 160 = 90',2),
+  C('OA 6','Problemas con dinero','Un curso juntó $12.000 para una actividad. Gastaron $4.500 en comida y $2.500 en bebidas.\n¿Cuánto dinero les quedó?','$5.000','4.500 + 2.500 = 7.000 ; 12.000 − 7.000 = 5.000',2),
+  C('OA 6','Problemas','Una caja contiene 24 lápices. Una escuela compra 8 cajas y reparte todos los lápices entre 16 estudiantes.\n¿Cuántos lápices recibe cada estudiante?','12 lápices','24 · 8 = 192 ; 192 : 16 = 12',2),
+  C('OA 7','Fracción de una cantidad','Sofía tiene 120 láminas y regala [[1/4]] de ellas a su hermana.\n¿Cuántas láminas le quedan?','90 láminas','[[1/4]] de 120 = 120 : 4 = 30 ; 120 − 30 = 90',2),
+  C('OA 6','Problemas','Un bus lleva 45 pasajeros. En la primera parada bajan 17 y suben 12.\n¿Cuántos pasajeros quedan en el bus?','40 pasajeros','45 − 17 = 28 ; 28 + 12 = 40',2),
+  C('OA 4','División','Una panadería prepara 240 panes y los coloca en bolsas de 6 panes cada una.\n¿Cuántas bolsas puede preparar?','40 bolsas','240 : 6 = 40, porque 6 · 40 = 240'),
+  C('OA 6','Problemas','Un colegio tiene 4 cursos de 35 estudiantes cada uno. Ese día faltan 20 estudiantes.\n¿Cuántos estudiantes asisten?','120 estudiantes','4 · 35 = 140 ; 140 − 20 = 120',2),
+  C('OA 3','Problemas con dinero','Camila ahorra $2.500 cada semana.\n¿Cuánto dinero habrá ahorrado después de 4 semanas?','$10.000','2.500 · 4 = 10.000'),
+  C('OA 6','Problemas','En una competencia cada respuesta correcta vale 5 puntos. Tomás respondió bien 18 preguntas y además recibió 10 puntos extra.\n¿Cuántos puntos obtuvo en total?','100 puntos','18 · 5 = 90 ; 90 + 10 = 100',2)
+ ],
+ '6':[
+  C('OA 2','Operaciones combinadas','En una biblioteca hay 345 libros de cuentos y 278 libros de ciencias. Se prestan 196 libros.\n¿Cuántos libros quedan en la biblioteca?','427 libros','345 + 278 = 623 ; 623 − 196 = 427'),
+  C('OA 2','Operaciones combinadas','Una profesora compró 8 cajas de lápices con 24 lápices cada una. Reparte 75 lápices entre sus estudiantes.\n¿Cuántos lápices le quedan?','117 lápices','8 · 24 = 192 ; 192 − 75 = 117'),
+  C('OA 2','Problemas con dinero','Martina ahorró $3.500 cada semana durante 8 semanas. Luego compró una mochila de $12.500.\n¿Cuánto dinero le quedó?','$15.500','3.500 · 8 = 28.000 ; 28.000 − 12.500 = 15.500'),
+  C('OA 2','Operaciones combinadas','Un bus debe recorrer 480 km. Ya recorrió 185 km en la mañana y 147 km en la tarde.\n¿Cuántos kilómetros le faltan?','148 km','185 + 147 = 332 ; 480 − 332 = 148'),
+  C('OA 8','Fracción de una cantidad','En un colegio hay 360 estudiantes y [[3/4]] de ellos participa en actividades deportivas.\n¿Cuántos estudiantes participan?','270 estudiantes','360 : 4 = 90 ; 90 · 3 = 270'),
+  C('OA 2','Operaciones combinadas','Una tienda recibió 15 paquetes con 36 botellas de agua cada uno y vendió 285 botellas.\n¿Cuántas botellas quedan?','255 botellas','15 · 36 = 540 ; 540 − 285 = 255'),
+  C('OA 2','División','Un agricultor cosechó 840 manzanas y las distribuyó en partes iguales en 12 cajas.\n¿Cuántas manzanas colocó en cada caja?','70 manzanas','840 : 12 = 70, porque 12 · 70 = 840'),
+  C('OA 2','Problemas con dinero','Camila compró 3 cuadernos de $1.250 cada uno y un estuche de $2.800. Pagó con $10.000.\n¿Cuánto vuelto recibió?','$3.450','3 · 1.250 = 3.750 ; 3.750 + 2.800 = 6.550 ; 10.000 − 6.550 = 3.450'),
+  C('OA 4','Porcentajes','En una competencia participaron 240 estudiantes y el 25 % obtuvo medalla.\n¿Cuántos estudiantes recibieron medalla?','60 estudiantes','25 % = [[1/4]] ; 240 : 4 = 60'),
+  C('OA 8','Decimales','Una familia recorrió 125,5 km el sábado y 87,5 km el domingo.\n¿Cuántos kilómetros recorrió en total?','213 km','125,5 + 87,5 = 213'),
+  C('OA 4','Porcentajes','En una librería había 1.250 libros. Durante la semana vendieron el 20 % y luego recibieron 175 libros nuevos.\n¿Cuántos libros tiene ahora la librería?','1.175 libros','20 % de 1.250 = 250 ; 1.250 − 250 = 1.000 ; 1.000 + 175 = 1.175',2),
+  C('OA 8','Fracción de una cantidad','Un estanque contiene 960 litros de agua. Se usan [[3/8]] del agua para regar un jardín.\n¿Cuántos litros quedan en el estanque?','600 litros','960 : 8 = 120 ; se usan 3 · 120 = 360 ; quedan 960 − 360 = 600 (o [[5/8]] de 960)',2),
+  C('OA 2','Operaciones combinadas','Un cine tiene 18 filas con 25 asientos cada una y se vendieron 387 entradas.\n¿Cuántos asientos quedaron vacíos?','63 asientos','18 · 25 = 450 ; 450 − 387 = 63',2),
+  C('OA 4','Porcentajes','Una familia tiene $150.000 para compras. Gasta el 30 % en alimentos y $25.000 en artículos de aseo.\n¿Cuánto dinero le queda?','$80.000','30 % de 150.000 = 45.000 ; 45.000 + 25.000 = 70.000 ; 150.000 − 70.000 = 80.000',2),
+  C('OA 3','Razones','Un ciclista recorre 18 km cada hora. Mantiene esa velocidad durante 2 horas y 30 minutos.\n¿Cuántos kilómetros recorre?','45 km','2 horas: 36 km ; media hora: 9 km ; 36 + 9 = 45',2),
+  C('OA 2','Operaciones combinadas','En una escuela se compraron 240 colaciones para 6 cursos de 35 estudiantes cada uno.\n¿Alcanzan para entregar una a cada estudiante? ¿Cuántas sobran o faltan?','Alcanzan y sobran 30 colaciones','6 · 35 = 210 estudiantes ; 240 − 210 = 30 colaciones de sobra',2),
+  C('OA 4','Porcentajes','Una chaqueta cuesta $48.000 y tiene un 25 % de descuento. Una persona compra dos chaquetas con el mismo descuento.\n¿Cuánto paga en total?','$72.000','25 % de 48.000 = 12.000 ; cada una cuesta 36.000 ; 2 · 36.000 = 72.000',2),
+  C('OA 2','Perímetro','Un terreno rectangular mide 24 m de largo y 15 m de ancho. Se quiere cercar con 3 vueltas de alambre.\n¿Cuántos metros de alambre se necesitan?','234 metros','Perímetro: 24 + 15 + 24 + 15 = 78 m ; 3 vueltas: 3 · 78 = 234',2),
+  C('OA 2','Problemas con dinero','En una campaña solidaria, 5 cursos reunieron $18.500 cada uno. Compraron alimentos por $62.500 y repartieron el resto en partes iguales entre 5 familias.\n¿Cuánto recibió cada familia?','$6.000','5 · 18.500 = 92.500 ; 92.500 − 62.500 = 30.000 ; 30.000 : 5 = 6.000',2),
+  C('OA 8','Fracción de una cantidad','Un estanque tenía 1.200 litros de agua. En la mañana se consumió la tercera parte y en la tarde, la cuarta parte de la cantidad inicial.\n¿Cuántos litros quedaron?','500 litros','[[1/3]] de 1.200 = 400 ; [[1/4]] de 1.200 = 300 ; 1.200 − 400 − 300 = 500',2)
+ ]
+};
+/* intercala: uno del banco, uno nuevo… y el resto al final */
+const intercalar = (base, nuevos) => { const out=[]; const n=Math.max(base.length,nuevos.length); for(let i=0;i<n;i++){ if(i<base.length) out.push(base[i]); if(i<nuevos.length) out.push(nuevos[i]); } return out; };
+
+/* Migración v5 → v6 (3° básico): reemplaza los problemas sin editar por su versión ajustada y desactiva los del año pasado que no calzan */
+const MIG6 = [
+ [C('OA 6','Adición','Sofía tiene 245 láminas. Tomás tiene 138 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','628 láminas','Tomás: 245 + 138 = 383. Entre los dos: 245 + 383 = 628.',2), C('OA 6','Adición','Sofía tiene 213 láminas. Tomás tiene 132 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','558 láminas','Tomás: 213 + 132 = 345. Entre los dos: 213 + 345 = 558.',2)],
+ [C('OA 10','Dinero','Juan tiene 3 billetes de $1.000 y 4 monedas de $100.\n¿Cuánto dinero tiene?','$3.400','3 billetes de $1.000 = $3.000 ; 4 monedas de $100 = $400 ; total $3.400'), C('OA 10','Dinero','Juan tiene 4 monedas de $100 y 3 monedas de $10.\n¿Cuánto dinero tiene?','$430','4 monedas de $100 = $400 ; 3 monedas de $10 = $30 ; total $430')],
+ [C('OA 8','Multiplicación','En una caja hay 4 filas con 6 huevos cada una. Se rompen 5 huevos.\n¿Cuántos huevos quedan sanos?','19 huevos','4 · 6 = 24 ; 24 − 5 = 19',2), C('OA 8','Multiplicación','En una caja hay 3 filas con 10 huevos cada una. Se usan 10 huevos para una torta.\n¿Cuántos huevos quedan?','20 huevos','3 · 10 = 30 ; 30 − 10 = 20',2)],
+ [C('OA 22','Peso','Un paquete de arroz pesa 1 kg. Para el almuerzo se usan 350 g.\n¿Cuántos gramos de arroz quedan en el paquete?','650 g','1 kg = 1.000 g ; 1.000 − 350 = 650',2), C('OA 22','Peso','Un paquete de arroz pesa 750 g. Para el almuerzo se usan 250 g.\n¿Cuántos gramos de arroz quedan en el paquete?','500 g','750 − 250 = 500')],
+ [C('OA 6','Sustracción','Una biblioteca tenía 500 libros. Prestó 136.\n¿Cuántos libros quedan en la biblioteca?','364 libros','500 − 136 = 364'), C('OA 6','Sustracción','Una biblioteca tenía 586 libros. Prestó 234.\n¿Cuántos libros quedan en la biblioteca?','352 libros','586 − 234 = 352')],
+ [C('OA 10','Dinero','Pedro tenía $800. Compró un jugo de $350 y un pan de $200.\n¿Cuánto dinero le queda?','$250','350 + 200 = 550 ; 800 − 550 = 250',2), C('OA 10','Dinero','Pedro tenía $870. Compró un jugo de $320 y un pan de $150.\n¿Cuánto dinero le queda?','$400','320 + 150 = 470 ; 870 − 470 = 400',2)],
+ [C('OA 10','Dinero','Un helado cuesta $450. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$900','450 + 450 = 900'), C('OA 10','Dinero','Un helado cuesta $340. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$680','El doble de 340: 340 + 340 = 680')],
+ [A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['6 · 4 = 24','7 · 5 = 35','8 · 3 = 21','9 · 2 = 18'],2,'8 · 3 = 24, no 21. (7 · 3 = 21)'), A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['2 · 6 = 12','5 · 4 = 20','10 · 7 = 70','5 · 6 = 35'],3,'5 · 6 = 30, no 35. (5 · 7 = 35)')],
+ [C('OA 8','Multiplicación','Un auto tiene 4 ruedas.\n¿Cuántas ruedas tienen 6 autos?','24 ruedas','6 · 4 = 24'), C('OA 8','Multiplicación','Una mano tiene 5 dedos.\n¿Cuántos dedos hay en 4 manos?','20 dedos','4 · 5 = 20')],
+ [C('OA 6','Sustracción','¿Cuánto es 100 − 35?','65','100 − 35 = 65'), C('OA 6','Sustracción','¿Cuánto es 100 − 30?','70','10 decenas − 3 decenas = 7 decenas = 70')],
+ [C('OA 6','Adición','¿Cuánto es 250 + 250?','500','250 + 250 = 500'), C('OA 6','Adición','¿Cuánto es 200 + 300?','500','2 centenas + 3 centenas = 5 centenas = 500')]
+];
 const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
  {id:'3', nombre:'3° básico', desempate:DESEMPATE['3'], preguntas:[
   ...P3_ANTERIOR,
-  C('OA 6','Adición','Sofía tiene 245 láminas. Tomás tiene 138 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','628 láminas','Tomás: 245 + 138 = 383. Entre los dos: 245 + 383 = 628.',2),
+  C('OA 6','Adición','Sofía tiene 213 láminas. Tomás tiene 132 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','558 láminas','Tomás: 213 + 132 = 345. Entre los dos: 213 + 345 = 558.',2),
   A('OA 5','Valor posicional','Soy un número entre 300 y 400. Mi cifra de las decenas es el doble de mi cifra de las centenas y termino en 0. ¿Quién soy?',['306','360','630','350'],1,'Centenas: 3. Decenas: el doble de 3 = 6. Unidades: 0 → 360.'),
-  C('OA 10','Dinero','Juan tiene 3 billetes de $1.000 y 4 monedas de $100.\n¿Cuánto dinero tiene?','$3.400','3 billetes de $1.000 = $3.000 ; 4 monedas de $100 = $400 ; total $3.400'),
+  C('OA 10','Dinero','Juan tiene 4 monedas de $100 y 3 monedas de $10.\n¿Cuánto dinero tiene?','$430','4 monedas de $100 = $400 ; 3 monedas de $10 = $30 ; total $430'),
   C('OA 12','Patrones','Completa el patrón:\n7, 12, 17, 22, ___, ___','27 y 32','Cada número aumenta en 5.'),
-  C('OA 8','Multiplicación','En una caja hay 4 filas con 6 huevos cada una. Se rompen 5 huevos.\n¿Cuántos huevos quedan sanos?','19 huevos','4 · 6 = 24 ; 24 − 5 = 19',2),
-  C('OA 22','Peso','Un paquete de arroz pesa 1 kg. Para el almuerzo se usan 350 g.\n¿Cuántos gramos de arroz quedan en el paquete?','650 g','1 kg = 1.000 g ; 1.000 − 350 = 650',2),
+  C('OA 8','Multiplicación','En una caja hay 3 filas con 10 huevos cada una. Se usan 10 huevos para una torta.\n¿Cuántos huevos quedan?','20 huevos','3 · 10 = 30 ; 30 − 10 = 20',2),
+  C('OA 22','Peso','Un paquete de arroz pesa 750 g. Para el almuerzo se usan 250 g.\n¿Cuántos gramos de arroz quedan en el paquete?','500 g','750 − 250 = 500'),
   C('OA 15','Figuras 3D y 2D','Para armar un cubo se usa una red de cuadrados.\n¿Cuántos cuadrados tiene la red? ¿Cuántas aristas tiene el cubo armado?','6 cuadrados y 12 aristas','El cubo tiene 6 caras cuadradas; 4 aristas arriba, 4 abajo y 4 verticales.',2),
-  C('OA 6','Sustracción','Una biblioteca tenía 500 libros. Prestó 136.\n¿Cuántos libros quedan en la biblioteca?','364 libros','500 − 136 = 364'),
+  C('OA 6','Sustracción','Una biblioteca tenía 586 libros. Prestó 234.\n¿Cuántos libros quedan en la biblioteca?','352 libros','586 − 234 = 352'),
   A('OA 3','Comparar números','¿Cuál es el número mayor?',['709','790','097','779'],1,'Entre 709, 790 y 779 (097 es menor que 100), el de más decenas es 790.'),
   C('OA 25','Pictogramas','En un pictograma, cada ☺ representa 2 estudiantes. En la fila «Helado» hay 7 caritas.\n¿Cuántos estudiantes eligieron helado?','14 estudiantes','7 caritas de 2 estudiantes: 7 · 2 = 14'),
   C('OA 11','Fracciones','Una barra de chocolate tiene 8 cuadritos iguales. Me como la mitad.\n¿Cuántos cuadritos me comí?','4 cuadritos','[[1/2]] de 8: se reparten en 2 partes iguales de 4.'),
@@ -191,9 +259,9 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   C('OA 3','Ordenar números','Ordena de menor a mayor:\n512, 125, 251','125, 251, 512','Se comparan las centenas: 1 < 2 < 5.'),
   C('OA 15','Figuras 3D y 2D','Una pirámide tiene base cuadrada.\n¿Cuántas caras triangulares tiene?','4 caras triangulares','Una cara triangular por cada lado de la base cuadrada: 4.'),
   C('OA 6','Operaciones combinadas','Una panadería tenía 450 panes. En la mañana vendió 230 y en la tarde horneó 120 más.\n¿Cuántos panes tiene ahora?','340 panes','450 − 230 = 220 ; 220 + 120 = 340',2),
-  C('OA 10','Dinero','Pedro tenía $800. Compró un jugo de $350 y un pan de $200.\n¿Cuánto dinero le queda?','$250','350 + 200 = 550 ; 800 − 550 = 250',2),
-  C('OA 10','Dinero','Un helado cuesta $450. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$900','450 + 450 = 900'),
-  A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['6 · 4 = 24','7 · 5 = 35','8 · 3 = 21','9 · 2 = 18'],2,'8 · 3 = 24, no 21. (7 · 3 = 21)'),
+  C('OA 10','Dinero','Pedro tenía $870. Compró un jugo de $320 y un pan de $150.\n¿Cuánto dinero le queda?','$400','320 + 150 = 470 ; 870 − 470 = 400',2),
+  C('OA 10','Dinero','Un helado cuesta $340. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$680','El doble de 340: 340 + 340 = 680'),
+  A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['2 · 6 = 12','5 · 4 = 20','10 · 7 = 70','5 · 6 = 35'],3,'5 · 6 = 30, no 35. (5 · 7 = 35)'),
   C('OA 5','Valor posicional','¿Qué número tiene 6 centenas, 0 decenas y 9 unidades?','609','600 + 0 + 9 = 609'),
   A('OA 11','Fracciones','Una pizza se cortó en 4 partes iguales y se comieron 3 partes. ¿Qué fracción de la pizza se comieron?',['[[1/4]]','[[3/4]]','[[4/3]]','[[1/3]]'],1,'3 partes de un total de 4 → [[3/4]]'),
   A('OA 11','Comparar fracciones','De una misma pizza, ¿qué es más: [[1/4]] o [[3/4]]?',['[[1/4]]','[[3/4]]','Son iguales','No se puede saber'],1,'Con el mismo denominador, es mayor la que tiene más partes: 3 > 1.'),
@@ -227,7 +295,7 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   C('OA 14','Inecuaciones','¿Cuál es el mayor número natural que cumple?\n12 + x < 16','3','12 + 3 = 15 < 16 ; con 4: 12 + 4 = 16, que no es menor que 16.',2),
   ...EXTRA['4']
  ]},
- {id:'5', nombre:'5° básico', desempate:DESEMPATE['5'], preguntas:[
+ {id:'5', nombre:'5° básico', desempate:DESEMPATE['5'], preguntas:intercalar([
   A('OA 1','Valor posicional','¿Cuál es el valor posicional del dígito 7 en el número 4.372.516?',['7','700','70.000','7.000'],2,'El 7 está en las decenas de mil → 70.000'),
   C('OA 6','Dinero','Martina compra un cuaderno de $1.250 y un lápiz de $680. Paga con $5.000.\n¿Cuánto vuelto recibe?','$3.070','1.250 + 680 = 1.930 ; 5.000 − 1.930 = 3.070'),
   C('OA 13','Decimales','En una carrera de 3 km, Diego ya ha corrido 1,75 km.\n¿Cuántos kilómetros le faltan?','1,25 km','3 − 1,75 = 1,25'),
@@ -254,8 +322,8 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   A('OA 11','Ordenar decimales','¿Cuál es el número menor?',['0,305','0,35','0,3','0,053'],3,'Se comparan los décimos: 0,053 tiene 0 décimos; los demás tienen 3.'),
   C('OA 14','Sucesiones','Con 4 fósforos se forma 1 cuadrado; con 7, dos cuadrados en fila; con 10, tres.\n¿Cuántos fósforos se necesitan para 8 cuadrados en fila?','25 fósforos','Cada cuadrado nuevo agrega 3 fósforos: 4 + 7 · 3 = 25',2),
   ...EXTRA['5']
- ]},
- {id:'6', nombre:'6° básico', desempate:DESEMPATE['6'], preguntas:[
+ ], EXTRA2['5'])},
+ {id:'6', nombre:'6° básico', desempate:DESEMPATE['6'], preguntas:intercalar([
   C('OA 4','Porcentajes','Una polera cuesta $12.000 y tiene un 25 % de descuento.\n¿Cuánto se paga?','$9.000','25 % de 12.000 = 3.000 ; 12.000 − 3.000 = 9.000'),
   A('OA 3','Razones','En un curso, la razón entre niñas y niños es 3 : 4. Si hay 12 niñas, ¿cuántos estudiantes hay en total?',['16','28','21','7'],1,'3 → 12 (por 4). Niños: 4 · 4 = 16. Total: 12 + 16 = 28',2),
   C('OA 3','Razones','Para hacer 6 panqueques se necesitan 2 huevos.\n¿Cuántos huevos se necesitan para hacer 15 panqueques?','5 huevos','Razón 2 : 6 = 1 : 3. 1 huevo alcanza para 3 panqueques ; 15 : 3 = 5',2),
@@ -282,5 +350,5 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   C('OA 2','Operaciones','Un colegio compra 25 mochilas de $12.400 cada una.\n¿Cuánto paga en total?','$310.000','12.400 · 25 = 12.400 · 100 : 4 = 1.240.000 : 4 = 310.000',2),
   C('OA 7','Escalas y decimales','En un mapa, 1 cm representa 5 km. Dos ciudades están a 7,5 cm en el mapa.\n¿Cuál es la distancia real entre ellas?','37,5 km','7,5 · 5 = 37,5'),
   ...EXTRA['6']
- ]}
+ ], EXTRA2['6'])}
 ]};

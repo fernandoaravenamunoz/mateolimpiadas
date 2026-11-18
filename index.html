@@ -292,6 +292,7 @@ kbd{background:var(--bg3);border-radius:5px;padding:.05em .45em;font-family:inhe
 .qitem{display:flex;gap:10px;align-items:center;background:var(--bg3);border-radius:12px;padding:10px 12px;border:2px solid transparent}
 .qitem.on{border-color:var(--navy)}
 .qitem.used{opacity:.6}
+.qitem.off{opacity:.45;background:repeating-linear-gradient(135deg,var(--bg3) 0 10px,#eee 10px 20px)}
 .qitem .n{font-family:'Baloo 2';font-size:1.3rem;width:1.6em;flex:none}
 .qitem .t{flex:1;font-weight:700;font-size:.95rem;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .qitem .ty{font-size:.7rem;text-transform:uppercase;color:var(--muted);letter-spacing:.05em}
@@ -518,6 +519,7 @@ kbd{background:var(--bg3);border-radius:5px;padding:.05em .45em;font-family:inhe
     <div class="scores">
       <button class="sm" id="cfBank">📚 Banco de problemas</button>
       <button class="sm" id="cfPauta">📄 Pauta cálculo mental</button>
+      <button class="sm" id="cfPautaProb">📄 Pauta problemas</button>
       <button class="sm" id="cfHist">🕘 Historial</button>
       <button class="sm" id="cfExport">Exportar</button>
       <button class="sm" id="cfImport">Importar</button>
@@ -611,7 +613,7 @@ const FIG_5 = '<svg viewBox="0 0 270 150" width="420"><polygon points="25,20 187
 /* C = respuesta corta · A = alternativas.  oa = Objetivo de Aprendizaje basal (Actualización de la Priorización Curricular, MINEDUC 2023) */
 const C = (oa, tema, texto, respuesta, explicacion, puntos=1) => ({oa, tema, tipo:'corta', texto, respuesta, explicacion, puntos});
 const A = (oa, tema, texto, opciones, correcta, explicacion, puntos=1) => ({oa, tema, tipo:'alt', texto, opciones, correcta, explicacion, puntos});
-const BANK_VERSION = 5;
+const BANK_VERSION = 7;
 /* 20 problemas adicionales por nivel (4° a 6°), alineados a los OA basales */
 const EXTRA = {
  '4':[
@@ -682,7 +684,10 @@ const EXTRA = {
  ]
 };
 
-const I = (img, oa, tema, texto, respuesta, explicacion, puntos=1) => ({img, oa, tema, tipo:'corta', texto, respuesta, explicacion, puntos});
+const I = (img, oa, tema, texto, respuesta, explicacion, puntos=1) => Object.assign({img, oa, tema, tipo:'corta', texto, respuesta, explicacion, puntos}, P3_OFF.includes(img)?{off:true}:{});
+/* 3°: problemas del año pasado desactivados (no se juegan) por no ajustarse a los criterios de 3° acordados con coordinación (nov. 2026):
+   multiplicación fuera de las tablas del 2, 5 y 10, división, números sobre 1.000 o varios cálculos con reserva. Se pueden reactivar desde el editor. */
+const P3_OFF = ['p3_01', 'p3_05', 'p3_07', 'p3_09', 'p3_13', 'p3_14', 'p3_15', 'p3_16', 'p3_19', 'p3_20'];
 /* Preguntas usadas en la olimpiada del año pasado con 3° básico (con su imagen original) */
 const P3_ANTERIOR = [
   I('p3_01','OA 10','Dinero','¿Cuánto dinero hay? (billetes y monedas)','$5.230','5 billetes de $1.000 = $5.000 ; 2 monedas de $100 = $200 ; 3 monedas de $10 = $30 ; total $5.230',2),
@@ -710,13 +715,13 @@ const P3_ANTERIOR = [
 /* Reserva de desempates: 15 problemas por nivel, de respuesta única y rápida, alineados a los OA basales */
 const DESEMPATE = {
  '3':[
-  C('OA 6','Adición','¿Cuánto es 250 + 250?','500','250 + 250 = 500'),
+  C('OA 6','Adición','¿Cuánto es 200 + 300?','500','2 centenas + 3 centenas = 5 centenas = 500'),
   C('OA 5','Valor posicional','¿Cuánto vale el dígito 4 en el número 248?','40','El 4 está en las decenas: 4 decenas = 40'),
-  C('OA 8','Multiplicación','Un auto tiene 4 ruedas.\n¿Cuántas ruedas tienen 6 autos?','24 ruedas','6 · 4 = 24'),
+  C('OA 8','Multiplicación','Una mano tiene 5 dedos.\n¿Cuántos dedos hay en 4 manos?','20 dedos','4 · 5 = 20'),
   C('OA 12','Patrones','¿Qué número sigue?\n5, 10, 15, 20, ___','25','El patrón aumenta de 5 en 5.'),
   C('OA 10','Dinero','Tengo 3 monedas de $100 y 1 moneda de $50.\n¿Cuánto dinero tengo?','$350','100 + 100 + 100 + 50 = 350'),
   C('OA 3','Comparar números','¿Cuál número es mayor: 398 o 401?','401','401 tiene 4 centenas y 398 tiene 3.'),
-  C('OA 6','Sustracción','¿Cuánto es 100 − 35?','65','100 − 35 = 65'),
+  C('OA 6','Sustracción','¿Cuánto es 100 − 30?','70','10 decenas − 3 decenas = 7 decenas = 70'),
   C('OA 11','Fracciones','Una pizza se corta en 4 partes iguales y me como 1 parte.\n¿Qué fracción de la pizza me comí?','[[1/4]]','1 parte de un total de 4: un cuarto.'),
   C('OA 21','Perímetro','Un triángulo tiene lados de 4 cm, 5 cm y 6 cm.\n¿Cuál es su perímetro?','15 cm','4 + 5 + 6 = 15'),
   C('OA 15','Figuras 3D','¿Cuántas caras tiene un cubo?','6 caras','Como un dado: 6 caras cuadradas.'),
@@ -779,17 +784,82 @@ const DESEMPATE = {
  ]
 };
 
+/* 40 problemas de la profesora de 5° y 6° básico (nov. 2026). Se intercalan con los del banco (uno y uno) para que salgan desde las primeras rondas.
+   6°: los del «Nivel avanzado» del documento original valen 2 puntos. */
+const EXTRA2 = {
+ '5':[
+  C('OA 6','Adición','En una biblioteca hay 125 libros de cuentos y 78 libros de ciencias.\n¿Cuántos libros hay en total?','203 libros','125 + 78 = 203'),
+  C('OA 6','Dinero','Martina tenía $5.000 y compró un cuaderno de $1.800.\n¿Cuánto dinero le quedó?','$3.200','5.000 − 1.800 = 3.200'),
+  C('OA 3','Multiplicación','Un curso tiene 32 estudiantes. Cada estudiante recibe 3 lápices y 6 cuadernos.\n¿Cuántos lápices se necesitan?','96 lápices','Solo importan los lápices: 32 · 3 = 96'),
+  C('OA 4','División','Un profesor tiene 240 hojas y las reparte por igual entre 8 grupos.\n¿Cuántas hojas recibe cada grupo?','30 hojas','240 : 8 = 30, porque 8 · 30 = 240'),
+  C('OA 6','Adición','Pedro recorrió 350 metros en la mañana y 275 metros en la tarde.\n¿Cuántos metros recorrió en total?','625 metros','350 + 275 = 625'),
+  C('OA 4','División','Andrea compró 2 cajas de chocolates. Reparte solo una de ellas, que tiene 48 chocolates, por igual entre 6 niños.\n¿Cuántos chocolates recibe cada uno?','8 chocolates','Se reparte una sola caja: 48 : 6 = 8'),
+  C('OA 3','Problemas con dinero','Una entrada al cine cuesta $4.500. Cinco amigos compran una entrada cada uno.\n¿Cuánto pagan en total?','$22.500','4.500 · 5 = 22.500'),
+  C('OA 6','Adición','En una granja hay 135 gallinas, 65 patos y 20 conejos.\n¿Cuántas aves hay en total?','200 aves','Los conejos no son aves: 135 + 65 = 200'),
+  C('OA 6','Sustracción','Un colegio compró 500 lápices y ya entregó 275.\n¿Cuántos lápices quedan?','225 lápices','500 − 275 = 225'),
+  C('OA 4','División','Una profesora tiene 90 stickers y los reparte por igual entre 9 estudiantes.\n¿Cuántos stickers recibe cada estudiante?','10 stickers','90 : 9 = 10'),
+  C('OA 4','División','En una excursión participan 96 estudiantes y se forman grupos de 8.\n¿Cuántos grupos se pueden formar?','12 grupos','96 : 8 = 12, porque 8 · 12 = 96'),
+  C('OA 6','Problemas','Una tienda tiene 250 poleras. En la mañana vende 75 y en la tarde vende 85.\n¿Cuántas poleras quedan?','90 poleras','75 + 85 = 160 ; 250 − 160 = 90',2),
+  C('OA 6','Problemas con dinero','Un curso juntó $12.000 para una actividad. Gastaron $4.500 en comida y $2.500 en bebidas.\n¿Cuánto dinero les quedó?','$5.000','4.500 + 2.500 = 7.000 ; 12.000 − 7.000 = 5.000',2),
+  C('OA 6','Problemas','Una caja contiene 24 lápices. Una escuela compra 8 cajas y reparte todos los lápices entre 16 estudiantes.\n¿Cuántos lápices recibe cada estudiante?','12 lápices','24 · 8 = 192 ; 192 : 16 = 12',2),
+  C('OA 7','Fracción de una cantidad','Sofía tiene 120 láminas y regala [[1/4]] de ellas a su hermana.\n¿Cuántas láminas le quedan?','90 láminas','[[1/4]] de 120 = 120 : 4 = 30 ; 120 − 30 = 90',2),
+  C('OA 6','Problemas','Un bus lleva 45 pasajeros. En la primera parada bajan 17 y suben 12.\n¿Cuántos pasajeros quedan en el bus?','40 pasajeros','45 − 17 = 28 ; 28 + 12 = 40',2),
+  C('OA 4','División','Una panadería prepara 240 panes y los coloca en bolsas de 6 panes cada una.\n¿Cuántas bolsas puede preparar?','40 bolsas','240 : 6 = 40, porque 6 · 40 = 240'),
+  C('OA 6','Problemas','Un colegio tiene 4 cursos de 35 estudiantes cada uno. Ese día faltan 20 estudiantes.\n¿Cuántos estudiantes asisten?','120 estudiantes','4 · 35 = 140 ; 140 − 20 = 120',2),
+  C('OA 3','Problemas con dinero','Camila ahorra $2.500 cada semana.\n¿Cuánto dinero habrá ahorrado después de 4 semanas?','$10.000','2.500 · 4 = 10.000'),
+  C('OA 6','Problemas','En una competencia cada respuesta correcta vale 5 puntos. Tomás respondió bien 18 preguntas y además recibió 10 puntos extra.\n¿Cuántos puntos obtuvo en total?','100 puntos','18 · 5 = 90 ; 90 + 10 = 100',2)
+ ],
+ '6':[
+  C('OA 2','Operaciones combinadas','En una biblioteca hay 345 libros de cuentos y 278 libros de ciencias. Se prestan 196 libros.\n¿Cuántos libros quedan en la biblioteca?','427 libros','345 + 278 = 623 ; 623 − 196 = 427'),
+  C('OA 2','Operaciones combinadas','Una profesora compró 8 cajas de lápices con 24 lápices cada una. Reparte 75 lápices entre sus estudiantes.\n¿Cuántos lápices le quedan?','117 lápices','8 · 24 = 192 ; 192 − 75 = 117'),
+  C('OA 2','Problemas con dinero','Martina ahorró $3.500 cada semana durante 8 semanas. Luego compró una mochila de $12.500.\n¿Cuánto dinero le quedó?','$15.500','3.500 · 8 = 28.000 ; 28.000 − 12.500 = 15.500'),
+  C('OA 2','Operaciones combinadas','Un bus debe recorrer 480 km. Ya recorrió 185 km en la mañana y 147 km en la tarde.\n¿Cuántos kilómetros le faltan?','148 km','185 + 147 = 332 ; 480 − 332 = 148'),
+  C('OA 8','Fracción de una cantidad','En un colegio hay 360 estudiantes y [[3/4]] de ellos participa en actividades deportivas.\n¿Cuántos estudiantes participan?','270 estudiantes','360 : 4 = 90 ; 90 · 3 = 270'),
+  C('OA 2','Operaciones combinadas','Una tienda recibió 15 paquetes con 36 botellas de agua cada uno y vendió 285 botellas.\n¿Cuántas botellas quedan?','255 botellas','15 · 36 = 540 ; 540 − 285 = 255'),
+  C('OA 2','División','Un agricultor cosechó 840 manzanas y las distribuyó en partes iguales en 12 cajas.\n¿Cuántas manzanas colocó en cada caja?','70 manzanas','840 : 12 = 70, porque 12 · 70 = 840'),
+  C('OA 2','Problemas con dinero','Camila compró 3 cuadernos de $1.250 cada uno y un estuche de $2.800. Pagó con $10.000.\n¿Cuánto vuelto recibió?','$3.450','3 · 1.250 = 3.750 ; 3.750 + 2.800 = 6.550 ; 10.000 − 6.550 = 3.450'),
+  C('OA 4','Porcentajes','En una competencia participaron 240 estudiantes y el 25 % obtuvo medalla.\n¿Cuántos estudiantes recibieron medalla?','60 estudiantes','25 % = [[1/4]] ; 240 : 4 = 60'),
+  C('OA 8','Decimales','Una familia recorrió 125,5 km el sábado y 87,5 km el domingo.\n¿Cuántos kilómetros recorrió en total?','213 km','125,5 + 87,5 = 213'),
+  C('OA 4','Porcentajes','En una librería había 1.250 libros. Durante la semana vendieron el 20 % y luego recibieron 175 libros nuevos.\n¿Cuántos libros tiene ahora la librería?','1.175 libros','20 % de 1.250 = 250 ; 1.250 − 250 = 1.000 ; 1.000 + 175 = 1.175',2),
+  C('OA 8','Fracción de una cantidad','Un estanque contiene 960 litros de agua. Se usan [[3/8]] del agua para regar un jardín.\n¿Cuántos litros quedan en el estanque?','600 litros','960 : 8 = 120 ; se usan 3 · 120 = 360 ; quedan 960 − 360 = 600 (o [[5/8]] de 960)',2),
+  C('OA 2','Operaciones combinadas','Un cine tiene 18 filas con 25 asientos cada una y se vendieron 387 entradas.\n¿Cuántos asientos quedaron vacíos?','63 asientos','18 · 25 = 450 ; 450 − 387 = 63',2),
+  C('OA 4','Porcentajes','Una familia tiene $150.000 para compras. Gasta el 30 % en alimentos y $25.000 en artículos de aseo.\n¿Cuánto dinero le queda?','$80.000','30 % de 150.000 = 45.000 ; 45.000 + 25.000 = 70.000 ; 150.000 − 70.000 = 80.000',2),
+  C('OA 3','Razones','Un ciclista recorre 18 km cada hora. Mantiene esa velocidad durante 2 horas y 30 minutos.\n¿Cuántos kilómetros recorre?','45 km','2 horas: 36 km ; media hora: 9 km ; 36 + 9 = 45',2),
+  C('OA 2','Operaciones combinadas','En una escuela se compraron 240 colaciones para 6 cursos de 35 estudiantes cada uno.\n¿Alcanzan para entregar una a cada estudiante? ¿Cuántas sobran o faltan?','Alcanzan y sobran 30 colaciones','6 · 35 = 210 estudiantes ; 240 − 210 = 30 colaciones de sobra',2),
+  C('OA 4','Porcentajes','Una chaqueta cuesta $48.000 y tiene un 25 % de descuento. Una persona compra dos chaquetas con el mismo descuento.\n¿Cuánto paga en total?','$72.000','25 % de 48.000 = 12.000 ; cada una cuesta 36.000 ; 2 · 36.000 = 72.000',2),
+  C('OA 2','Perímetro','Un terreno rectangular mide 24 m de largo y 15 m de ancho. Se quiere cercar con 3 vueltas de alambre.\n¿Cuántos metros de alambre se necesitan?','234 metros','Perímetro: 24 + 15 + 24 + 15 = 78 m ; 3 vueltas: 3 · 78 = 234',2),
+  C('OA 2','Problemas con dinero','En una campaña solidaria, 5 cursos reunieron $18.500 cada uno. Compraron alimentos por $62.500 y repartieron el resto en partes iguales entre 5 familias.\n¿Cuánto recibió cada familia?','$6.000','5 · 18.500 = 92.500 ; 92.500 − 62.500 = 30.000 ; 30.000 : 5 = 6.000',2),
+  C('OA 8','Fracción de una cantidad','Un estanque tenía 1.200 litros de agua. En la mañana se consumió la tercera parte y en la tarde, la cuarta parte de la cantidad inicial.\n¿Cuántos litros quedaron?','500 litros','[[1/3]] de 1.200 = 400 ; [[1/4]] de 1.200 = 300 ; 1.200 − 400 − 300 = 500',2)
+ ]
+};
+/* intercala: uno del banco, uno nuevo… y el resto al final */
+const intercalar = (base, nuevos) => { const out=[]; const n=Math.max(base.length,nuevos.length); for(let i=0;i<n;i++){ if(i<base.length) out.push(base[i]); if(i<nuevos.length) out.push(nuevos[i]); } return out; };
+
+/* Migración v5 → v6 (3° básico): reemplaza los problemas sin editar por su versión ajustada y desactiva los del año pasado que no calzan */
+const MIG6 = [
+ [C('OA 6','Adición','Sofía tiene 245 láminas. Tomás tiene 138 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','628 láminas','Tomás: 245 + 138 = 383. Entre los dos: 245 + 383 = 628.',2), C('OA 6','Adición','Sofía tiene 213 láminas. Tomás tiene 132 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','558 láminas','Tomás: 213 + 132 = 345. Entre los dos: 213 + 345 = 558.',2)],
+ [C('OA 10','Dinero','Juan tiene 3 billetes de $1.000 y 4 monedas de $100.\n¿Cuánto dinero tiene?','$3.400','3 billetes de $1.000 = $3.000 ; 4 monedas de $100 = $400 ; total $3.400'), C('OA 10','Dinero','Juan tiene 4 monedas de $100 y 3 monedas de $10.\n¿Cuánto dinero tiene?','$430','4 monedas de $100 = $400 ; 3 monedas de $10 = $30 ; total $430')],
+ [C('OA 8','Multiplicación','En una caja hay 4 filas con 6 huevos cada una. Se rompen 5 huevos.\n¿Cuántos huevos quedan sanos?','19 huevos','4 · 6 = 24 ; 24 − 5 = 19',2), C('OA 8','Multiplicación','En una caja hay 3 filas con 10 huevos cada una. Se usan 10 huevos para una torta.\n¿Cuántos huevos quedan?','20 huevos','3 · 10 = 30 ; 30 − 10 = 20',2)],
+ [C('OA 22','Peso','Un paquete de arroz pesa 1 kg. Para el almuerzo se usan 350 g.\n¿Cuántos gramos de arroz quedan en el paquete?','650 g','1 kg = 1.000 g ; 1.000 − 350 = 650',2), C('OA 22','Peso','Un paquete de arroz pesa 750 g. Para el almuerzo se usan 250 g.\n¿Cuántos gramos de arroz quedan en el paquete?','500 g','750 − 250 = 500')],
+ [C('OA 6','Sustracción','Una biblioteca tenía 500 libros. Prestó 136.\n¿Cuántos libros quedan en la biblioteca?','364 libros','500 − 136 = 364'), C('OA 6','Sustracción','Una biblioteca tenía 586 libros. Prestó 234.\n¿Cuántos libros quedan en la biblioteca?','352 libros','586 − 234 = 352')],
+ [C('OA 10','Dinero','Pedro tenía $800. Compró un jugo de $350 y un pan de $200.\n¿Cuánto dinero le queda?','$250','350 + 200 = 550 ; 800 − 550 = 250',2), C('OA 10','Dinero','Pedro tenía $870. Compró un jugo de $320 y un pan de $150.\n¿Cuánto dinero le queda?','$400','320 + 150 = 470 ; 870 − 470 = 400',2)],
+ [C('OA 10','Dinero','Un helado cuesta $450. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$900','450 + 450 = 900'), C('OA 10','Dinero','Un helado cuesta $340. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$680','El doble de 340: 340 + 340 = 680')],
+ [A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['6 · 4 = 24','7 · 5 = 35','8 · 3 = 21','9 · 2 = 18'],2,'8 · 3 = 24, no 21. (7 · 3 = 21)'), A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['2 · 6 = 12','5 · 4 = 20','10 · 7 = 70','5 · 6 = 35'],3,'5 · 6 = 30, no 35. (5 · 7 = 35)')],
+ [C('OA 8','Multiplicación','Un auto tiene 4 ruedas.\n¿Cuántas ruedas tienen 6 autos?','24 ruedas','6 · 4 = 24'), C('OA 8','Multiplicación','Una mano tiene 5 dedos.\n¿Cuántos dedos hay en 4 manos?','20 dedos','4 · 5 = 20')],
+ [C('OA 6','Sustracción','¿Cuánto es 100 − 35?','65','100 − 35 = 65'), C('OA 6','Sustracción','¿Cuánto es 100 − 30?','70','10 decenas − 3 decenas = 7 decenas = 70')],
+ [C('OA 6','Adición','¿Cuánto es 250 + 250?','500','250 + 250 = 500'), C('OA 6','Adición','¿Cuánto es 200 + 300?','500','2 centenas + 3 centenas = 5 centenas = 500')]
+];
 const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
  {id:'3', nombre:'3° básico', desempate:DESEMPATE['3'], preguntas:[
   ...P3_ANTERIOR,
-  C('OA 6','Adición','Sofía tiene 245 láminas. Tomás tiene 138 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','628 láminas','Tomás: 245 + 138 = 383. Entre los dos: 245 + 383 = 628.',2),
+  C('OA 6','Adición','Sofía tiene 213 láminas. Tomás tiene 132 láminas más que Sofía.\n¿Cuántas láminas tienen entre los dos?','558 láminas','Tomás: 213 + 132 = 345. Entre los dos: 213 + 345 = 558.',2),
   A('OA 5','Valor posicional','Soy un número entre 300 y 400. Mi cifra de las decenas es el doble de mi cifra de las centenas y termino en 0. ¿Quién soy?',['306','360','630','350'],1,'Centenas: 3. Decenas: el doble de 3 = 6. Unidades: 0 → 360.'),
-  C('OA 10','Dinero','Juan tiene 3 billetes de $1.000 y 4 monedas de $100.\n¿Cuánto dinero tiene?','$3.400','3 billetes de $1.000 = $3.000 ; 4 monedas de $100 = $400 ; total $3.400'),
+  C('OA 10','Dinero','Juan tiene 4 monedas de $100 y 3 monedas de $10.\n¿Cuánto dinero tiene?','$430','4 monedas de $100 = $400 ; 3 monedas de $10 = $30 ; total $430'),
   C('OA 12','Patrones','Completa el patrón:\n7, 12, 17, 22, ___, ___','27 y 32','Cada número aumenta en 5.'),
-  C('OA 8','Multiplicación','En una caja hay 4 filas con 6 huevos cada una. Se rompen 5 huevos.\n¿Cuántos huevos quedan sanos?','19 huevos','4 · 6 = 24 ; 24 − 5 = 19',2),
-  C('OA 22','Peso','Un paquete de arroz pesa 1 kg. Para el almuerzo se usan 350 g.\n¿Cuántos gramos de arroz quedan en el paquete?','650 g','1 kg = 1.000 g ; 1.000 − 350 = 650',2),
+  C('OA 8','Multiplicación','En una caja hay 3 filas con 10 huevos cada una. Se usan 10 huevos para una torta.\n¿Cuántos huevos quedan?','20 huevos','3 · 10 = 30 ; 30 − 10 = 20',2),
+  C('OA 22','Peso','Un paquete de arroz pesa 750 g. Para el almuerzo se usan 250 g.\n¿Cuántos gramos de arroz quedan en el paquete?','500 g','750 − 250 = 500'),
   C('OA 15','Figuras 3D y 2D','Para armar un cubo se usa una red de cuadrados.\n¿Cuántos cuadrados tiene la red? ¿Cuántas aristas tiene el cubo armado?','6 cuadrados y 12 aristas','El cubo tiene 6 caras cuadradas; 4 aristas arriba, 4 abajo y 4 verticales.',2),
-  C('OA 6','Sustracción','Una biblioteca tenía 500 libros. Prestó 136.\n¿Cuántos libros quedan en la biblioteca?','364 libros','500 − 136 = 364'),
+  C('OA 6','Sustracción','Una biblioteca tenía 586 libros. Prestó 234.\n¿Cuántos libros quedan en la biblioteca?','352 libros','586 − 234 = 352'),
   A('OA 3','Comparar números','¿Cuál es el número mayor?',['709','790','097','779'],1,'Entre 709, 790 y 779 (097 es menor que 100), el de más decenas es 790.'),
   C('OA 25','Pictogramas','En un pictograma, cada ☺ representa 2 estudiantes. En la fila «Helado» hay 7 caritas.\n¿Cuántos estudiantes eligieron helado?','14 estudiantes','7 caritas de 2 estudiantes: 7 · 2 = 14'),
   C('OA 11','Fracciones','Una barra de chocolate tiene 8 cuadritos iguales. Me como la mitad.\n¿Cuántos cuadritos me comí?','4 cuadritos','[[1/2]] de 8: se reparten en 2 partes iguales de 4.'),
@@ -800,9 +870,9 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   C('OA 3','Ordenar números','Ordena de menor a mayor:\n512, 125, 251','125, 251, 512','Se comparan las centenas: 1 < 2 < 5.'),
   C('OA 15','Figuras 3D y 2D','Una pirámide tiene base cuadrada.\n¿Cuántas caras triangulares tiene?','4 caras triangulares','Una cara triangular por cada lado de la base cuadrada: 4.'),
   C('OA 6','Operaciones combinadas','Una panadería tenía 450 panes. En la mañana vendió 230 y en la tarde horneó 120 más.\n¿Cuántos panes tiene ahora?','340 panes','450 − 230 = 220 ; 220 + 120 = 340',2),
-  C('OA 10','Dinero','Pedro tenía $800. Compró un jugo de $350 y un pan de $200.\n¿Cuánto dinero le queda?','$250','350 + 200 = 550 ; 800 − 550 = 250',2),
-  C('OA 10','Dinero','Un helado cuesta $450. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$900','450 + 450 = 900'),
-  A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['6 · 4 = 24','7 · 5 = 35','8 · 3 = 21','9 · 2 = 18'],2,'8 · 3 = 24, no 21. (7 · 3 = 21)'),
+  C('OA 10','Dinero','Pedro tenía $870. Compró un jugo de $320 y un pan de $150.\n¿Cuánto dinero le queda?','$400','320 + 150 = 470 ; 870 − 470 = 400',2),
+  C('OA 10','Dinero','Un helado cuesta $340. Dos amigos compran un helado cada uno.\n¿Cuánto pagan en total?','$680','El doble de 340: 340 + 340 = 680'),
+  A('OA 8','Tablas de multiplicar','¿Cuál de estos resultados está MALO?',['2 · 6 = 12','5 · 4 = 20','10 · 7 = 70','5 · 6 = 35'],3,'5 · 6 = 30, no 35. (5 · 7 = 35)'),
   C('OA 5','Valor posicional','¿Qué número tiene 6 centenas, 0 decenas y 9 unidades?','609','600 + 0 + 9 = 609'),
   A('OA 11','Fracciones','Una pizza se cortó en 4 partes iguales y se comieron 3 partes. ¿Qué fracción de la pizza se comieron?',['[[1/4]]','[[3/4]]','[[4/3]]','[[1/3]]'],1,'3 partes de un total de 4 → [[3/4]]'),
   A('OA 11','Comparar fracciones','De una misma pizza, ¿qué es más: [[1/4]] o [[3/4]]?',['[[1/4]]','[[3/4]]','Son iguales','No se puede saber'],1,'Con el mismo denominador, es mayor la que tiene más partes: 3 > 1.'),
@@ -836,7 +906,7 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   C('OA 14','Inecuaciones','¿Cuál es el mayor número natural que cumple?\n12 + x < 16','3','12 + 3 = 15 < 16 ; con 4: 12 + 4 = 16, que no es menor que 16.',2),
   ...EXTRA['4']
  ]},
- {id:'5', nombre:'5° básico', desempate:DESEMPATE['5'], preguntas:[
+ {id:'5', nombre:'5° básico', desempate:DESEMPATE['5'], preguntas:intercalar([
   A('OA 1','Valor posicional','¿Cuál es el valor posicional del dígito 7 en el número 4.372.516?',['7','700','70.000','7.000'],2,'El 7 está en las decenas de mil → 70.000'),
   C('OA 6','Dinero','Martina compra un cuaderno de $1.250 y un lápiz de $680. Paga con $5.000.\n¿Cuánto vuelto recibe?','$3.070','1.250 + 680 = 1.930 ; 5.000 − 1.930 = 3.070'),
   C('OA 13','Decimales','En una carrera de 3 km, Diego ya ha corrido 1,75 km.\n¿Cuántos kilómetros le faltan?','1,25 km','3 − 1,75 = 1,25'),
@@ -863,8 +933,8 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   A('OA 11','Ordenar decimales','¿Cuál es el número menor?',['0,305','0,35','0,3','0,053'],3,'Se comparan los décimos: 0,053 tiene 0 décimos; los demás tienen 3.'),
   C('OA 14','Sucesiones','Con 4 fósforos se forma 1 cuadrado; con 7, dos cuadrados en fila; con 10, tres.\n¿Cuántos fósforos se necesitan para 8 cuadrados en fila?','25 fósforos','Cada cuadrado nuevo agrega 3 fósforos: 4 + 7 · 3 = 25',2),
   ...EXTRA['5']
- ]},
- {id:'6', nombre:'6° básico', desempate:DESEMPATE['6'], preguntas:[
+ ], EXTRA2['5'])},
+ {id:'6', nombre:'6° básico', desempate:DESEMPATE['6'], preguntas:intercalar([
   C('OA 4','Porcentajes','Una polera cuesta $12.000 y tiene un 25 % de descuento.\n¿Cuánto se paga?','$9.000','25 % de 12.000 = 3.000 ; 12.000 − 3.000 = 9.000'),
   A('OA 3','Razones','En un curso, la razón entre niñas y niños es 3 : 4. Si hay 12 niñas, ¿cuántos estudiantes hay en total?',['16','28','21','7'],1,'3 → 12 (por 4). Niños: 4 · 4 = 16. Total: 12 + 16 = 28',2),
   C('OA 3','Razones','Para hacer 6 panqueques se necesitan 2 huevos.\n¿Cuántos huevos se necesitan para hacer 15 panqueques?','5 huevos','Razón 2 : 6 = 1 : 3. 1 huevo alcanza para 3 panqueques ; 15 : 3 = 5',2),
@@ -891,7 +961,7 @@ const DEFAULT_DATA = { version: BANK_VERSION, niveles: [
   C('OA 2','Operaciones','Un colegio compra 25 mochilas de $12.400 cada una.\n¿Cuánto paga en total?','$310.000','12.400 · 25 = 12.400 · 100 : 4 = 1.240.000 : 4 = 310.000',2),
   C('OA 7','Escalas y decimales','En un mapa, 1 cm representa 5 km. Dos ciudades están a 7,5 cm en el mapa.\n¿Cuál es la distancia real entre ellas?','37,5 km','7,5 · 5 = 37,5'),
   ...EXTRA['6']
- ]}
+ ], EXTRA2['6'])}
 ]};
 
 </script>
@@ -980,8 +1050,8 @@ const CFG_INFO = {
 };
 /* OA basales (Actualización de la Priorización Curricular 2023) que trabaja cada actividad */
 const OA_ACT = {
-  calc:   {'3':'OA 6 · OA 8', '4':'OA 2 · OA 3 · OA 5', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7 · OA 8'},
-  cadena: {'3':'OA 6 · OA 8', '4':'OA 2 · OA 5 · OA 6', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7'},
+  calc:   {'3':'OA 6', '4':'OA 2 · OA 3 · OA 5', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7 · OA 8'},
+  cadena: {'3':'OA 6', '4':'OA 2 · OA 5 · OA 6', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7'},
   magico: {'3':'OA 6', '4':'OA 3', '5':'OA 6', '6':'OA 2 · OA 8'},
   recta:  {'3':'OA 3', '4':'OA 1 · OA 8', '5':'OA 7 · OA 11', '6':'OA 5 · OA 8'},
   kakooma:{'3':'OA 6', '4':'OA 3', '5':'OA 6', '6':'OA 2'},
@@ -991,29 +1061,36 @@ const COLORS = ['#e4572e','#1f78d1','#1e9e5a','#8e44ad','#d99a00','#d6336c','#0f
 
 /* ---------- 1. Cálculo mental ---------- */
 /* Criterios de cálculo mental por nivel (definidos por el profesor):
-   3°: sumas y restas hasta 100 (y básicas hasta 18); tablas del 2, 5 y 10 (algo del 3 y 4); descomposición, completar decena, dobles, asociatividad. Sin división.
-   4°: todas las tablas hasta el 10; sumas y restas con números mayores; dobles y mitades; redondeo; descomposición de factores.
+   3°: solo sumas y restas hasta 100 (y básicas hasta 18), mayoría sin reserva; completar decena, dobles sin reserva, asociatividad. Sin multiplicación ni división.
+   4°: tablas hasta 10 · 10 (sin multiplicaciones mayores); sumas y restas con números mayores; dobles y mitades; redondeo.
    5°: naturales más amplios; multiplicar y dividir con múltiplos de 10, 100 y 1.000; distributividad; aproximaciones en sumas y restas.
    6°: tablas consolidadas; multiplicaciones y divisiones más complejas; división por potencias de 10; decimales simples; fracciones de referencia; cálculos equivalentes. */
+/* sin reserva: ninguna posición suma 10 o más (o, en la resta, ninguna cifra del sustraendo es mayor) */
+const sinRes = (a,b)=>{ for(;a||b;a=Math.floor(a/10),b=Math.floor(b/10)) if(a%10+b%10>9) return false; return true; };
+const sinPres = (a,b)=>{ for(;a||b;a=Math.floor(a/10),b=Math.floor(b/10)) if(a%10<b%10) return false; return true; };
 const CALC = {
  '3':[
-  ()=>{const a=rnd(2,9),b=rnd(2,9); return [`${a} + ${b}`, N(a+b)];},
+  /* Ajustado con coordinación (nov. 2026): solo adición y sustracción, dobles sin reserva y pocas operaciones con reserva (≈ 1 de cada 7). */
+  ()=>{const a=rnd(2,9),b=rnd(2,9); return [`${a} + ${b}`, N(a+b)];},                                            // básicas hasta 18
   ()=>{const a=rnd(11,18),b=rnd(2,9); if(a-b<2) return null; return [`${a} − ${b}`, N(a-b)];},
-  ()=>{const a=rnd(12,79),b=rnd(2,9); return [`${a} + ${b}`, N(a+b)];},
-  ()=>{const a=rnd(11,59),b=rnd(11,39); if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},
-  ()=>{const a=rnd(1,8)*10,b=rnd(1,8)*10; if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},
-  ()=>{const a=rnd(21,99),b=rnd(2,9); return [`${a} − ${b}`, N(a-b)];},
-  ()=>{const a=rnd(31,99),b=rnd(1,Math.floor(a/10)-1)*10; return [`${a} − ${b}`, N(a-b)];},
-  ()=>{const a=rnd(11,89); if(a%10===0) return null; const b=10-a%10; return [`${a} + ${b}`, N(a+b)];},          // completar la decena
+  ()=>{const a=rnd(12,88),b=rnd(1,8); if(!sinRes(a,b)) return null; return [`${a} + ${b}`, N(a+b)];},             // dos cifras + una, sin reserva
+  ()=>{const a=rnd(11,78),b=rnd(11,78); if(!sinRes(a,b)||a+b>99) return null; return [`${a} + ${b}`, N(a+b)];},  // dos cifras + dos cifras, sin reserva
+  ()=>{const a=rnd(1,8)*10,b=rnd(1,8)*10; if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},              // decenas
+  ()=>{const a=rnd(3,10)*10,b=rnd(1,a/10-1)*10; return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const a=rnd(21,99),b=rnd(1,8); if(!sinPres(a,b)) return null; return [`${a} − ${b}`, N(a-b)];},            // dos cifras − una, sin reserva
+  ()=>{const a=rnd(31,99),b=rnd(1,Math.floor(a/10)-1)*10; return [`${a} − ${b}`, N(a-b)];},                       // menos decenas
+  ()=>{const a=rnd(32,99),b=rnd(11,a-11); if(!sinPres(a,b)) return null; return [`${a} − ${b}`, N(a-b)];},        // dos cifras − dos cifras, sin reserva
   ()=>{const a=rnd(2,8),b=10-a,c=rnd(2,9); return [`${a} + ${b} + ${c}`, N(10+c)];},                              // asociar para formar 10
-  ()=>{const n=rnd(6,50); return [`El doble de ${n}`, N(2*n)];},
-  ()=>{const x=pick([2,5,10]),y=rnd(2,10); return [`${x} · ${y}`, N(x*y)];},
-  ()=>{const x=pick([2,5,10]),y=rnd(2,10); return [`${y} · ${x}`, N(x*y)];},
-  ()=>{const x=pick([3,4]),y=rnd(2,5); return [`${x} · ${y}`, N(x*y)];}
+  ()=>{const n=pick([rnd(2,5), rnd(1,4)*10+rnd(1,4), rnd(1,5)*10]); return [`El doble de ${n}`, N(2*n)];},       // dobles sin reserva
+  ()=>{const n=rnd(1,4)*10+rnd(1,4); return [`${n} + ${n}`, N(2*n)];},
+  ()=>{const a=rnd(11,89); if(a%10===0) return null; const b=10-a%10; return [`${a} + ${b}`, N(a+b)];},           // completar la decena (con reserva)
+  ()=>{const a=rnd(12,79),b=rnd(2,9); if(sinRes(a,b)) return null; return [`${a} + ${b}`, N(a+b)];}               // con reserva
  ],
  '4':[
+  /* Multiplicación: solo tablas hasta 10 · 10 (acordado con coordinación, nov. 2026) */
   ()=>{const x=rnd(6,9),y=rnd(3,9); return [`${x} · ${y}`, N(x*y)];},
   ()=>{const x=rnd(2,10),y=rnd(2,10); return [`${x} · ${y}`, N(x*y)];},
+  ()=>{const x=rnd(3,9),y=rnd(6,10); return [`${y} · ${x}`, N(x*y)];},
   ()=>{const a=rnd(12,68)*10,b=rnd(11,29)*10; return [`${a} + ${b}`, N(a+b)];},
   ()=>{const a=rnd(40,99)*10,b=rnd(11,39)*10; return [`${a} − ${b}`, N(a-b)];},
   ()=>{const a=rnd(120,780),b=pick([99,98,199]); return [`${a} + ${b}`, N(a+b)];},                                // redondear y compensar
@@ -1021,9 +1098,6 @@ const CALC = {
   ()=>{const a=rnd(31,95),b=rnd(12,a-11); return [`${a} − ${b}`, N(a-b)];},
   ()=>{const n=rnd(13,250); return [`El doble de ${n}`, N(2*n)];},
   ()=>{const n=rnd(13,250)*2; return [`La mitad de ${n}`, N(n/2)];},
-  ()=>{const a=rnd(11,25),b=pick([4,8]); return [`${a} · ${b}`, N(a*b)];},                                        // duplicar varias veces
-  ()=>{const a=rnd(6,49)*2; return [`${a} · 5`, N(a*5)];},                                                        // por 10 y mitad
-  ()=>{const a=rnd(11,39),b=rnd(2,4); return [`${a} · ${b}`, N(a*b)];},                                           // descomponer un factor
   ()=>{const n=rnd(101,989); if(n%10===5||n%10===0) return null; return [`Redondea ${n} a la decena`, N(Math.round(n/10)*10)];},
   ()=>{const n=rnd(1010,9890); if(n%100===50||n%100===0) return null; return [`Redondea ${N(n)} a la centena`, N(Math.round(n/100)*100)];}
  ],
@@ -1065,20 +1139,20 @@ const calcOne = lv => { const r = pick(CALC[lv])(); return r ? {expr:r[0], ans:r
 
 /* ---------- 2. Cadena mental ---------- */
 const CADENA = {
-  '3':{n:4, start:[5,20],  sum:[1,9],  max:60,  mul:[2,3], div:null,   ms:3500, w:['s','s','s','m']},
+  '3':{n:4, start:[5,20],  sum:[1,9],  max:60,  mul:null,  div:null,   ms:3500, w:['s'], sinRes:true},   // solo + y −, sin reserva
   '4':{n:5, start:[10,40], sum:[2,20], max:150, mul:[2,5], div:[2,5],  ms:3000, w:['s','s','m','d']},
   '5':{n:5, start:[10,60], sum:[5,30], max:400, mul:[2,9], div:[2,9],  ms:2800, w:['s','s','m','d']},
   '6':{n:6, start:[20,99], sum:[10,60],max:800, mul:[2,9], div:[2,10], ms:2500, w:['s','m','d']}
 };
 function cadenaOne(lv){
   const P = CADENA[lv];
-  const S = cur => { for(let i=0;i<30;i++){ const v=rnd(P.sum[0],P.sum[1]), plus=Math.random()<.55, r=plus?cur+v:cur-v; if(r>=0 && r<=P.max) return {op:plus?'+':'−', v, res:r}; } return null; };
-  const M = cur => { if(cur<=0) return null; const o=[]; for(let f=P.mul[0];f<=P.mul[1];f++) if(cur*f<=P.max) o.push(f); if(!o.length) return null; const f=pick(o); return {op:'·', v:f, res:cur*f}; };
+  const S = cur => { for(let i=0;i<60;i++){ const v=rnd(P.sum[0],P.sum[1]), plus=Math.random()<.55, r=plus?cur+v:cur-v; if(P.sinRes && !(plus?sinRes(cur,v):sinPres(cur,v))) continue; if(r>=0 && r<=P.max) return {op:plus?'+':'−', v, res:r}; } return null; };
+  const M = cur => { if(!P.mul || cur<=0) return null; const o=[]; for(let f=P.mul[0];f<=P.mul[1];f++) if(cur*f<=P.max) o.push(f); if(!o.length) return null; const f=pick(o); return {op:'·', v:f, res:cur*f}; };
   const D = cur => { if(!P.div || cur<=1) return null; const o=[]; for(let d=P.div[0];d<=P.div[1];d++) if(cur%d===0 && cur/d>=2) o.push(d); if(!o.length) return null; const d=pick(o); return {op:':', v:d, res:cur/d}; };
   const F = {s:S, m:M, d:D};
   const start = rnd(P.start[0], P.start[1]);
   let cur = start; const steps=[];
-  for(let i=0;i<P.n;i++){ const s = F[pick(P.w)](cur) || D(cur) || S(cur) || M(cur) || {op:'+', v:1, res:cur+1}; steps.push(s); cur = s.res; }
+  for(let i=0;i<P.n;i++){ const s = F[pick(P.w)](cur) || D(cur) || S(cur) || M(cur) || (P.sinRes ? null : {op:'+', v:1, res:cur+1}); if(!s) return null; steps.push(s); cur = s.res; }
   return {start, steps, ans:cur, ms:P.ms};
 }
 
@@ -1133,7 +1207,7 @@ function rectaOne(lv,k){
   if(lv==='3'){
     if(v===0){ min=Q(rnd(0,8)*100); div=10; step=Q(10); }
     else if(v===1){ min=Q(rnd(0,9)*10); div=10; step=Q(1); }
-    else { min=Q(rnd(1,7)*100); div=10; step=Q(20); }
+    else { min=Q(0); div=10; step=Q(100); }          // de 100 en 100 (antes de 20 en 20, que costó)
   } else if(lv==='4'){
     if(v===0){ min=Q(rnd(0,8)*1000); div=10; step=Q(100); }
     else if(v===1){ const d=pick([3,4,5,6,8]); min=Q(0); div=d; step=Q(1,d); modo='frac'; }
@@ -1179,6 +1253,7 @@ function kakoomaOne(lv){
   for(let t=0;t<5000;t++){
     const a=Q(rnd(a0,a1)), b=Q(rnd(a0,a1));
     if(qeq(a,b)) continue;
+    if(lv==='3' && !sinRes(qval(a),qval(b))) continue;   // 3°: la suma escondida no lleva reserva
     const c = qadd(a,b), vals=[a,b,c];
     let g=0; while(vals.length<6 && g<60){ g++; const x=Q(rnd(d0,d1)); if(!vals.some(y=>qeq(x,y))) vals.push(x); }
     if(vals.length<6) continue;
@@ -1210,7 +1285,20 @@ function load(){
     for(const lv of ['4','5','6']){ const n=data.niveles.find(x=>x.id===lv); if(!n) continue; const have=new Set(n.preguntas.map(q=>q.texto)); n.preguntas = n.preguntas.concat(clone(EXTRA[lv]).filter(q=>!have.has(q.texto))); }
     data.version = 4;
   }
-  if(data && data.niveles && data.version===4) data.version = BANK_VERSION;   // la reserva de desempates se agrega en normNiv
+  if(data && data.niveles && data.version===4) data.version = 5;   // la reserva de desempates se agrega en normNiv
+  if(data && data.niveles && data.version===5){
+    const n3 = data.niveles.find(n=>n.id==='3');
+    if(n3){
+      for(const bank of [n3.preguntas||[], n3.desempate||[]])
+        bank.forEach((q,i)=>{ const m = MIG6.find(([o])=>o.texto===q.texto); if(m) bank[i] = clone(m[1]); if(q.img && P3_OFF.includes(q.img)) q.off = true; });
+    }
+    if(niv) for(const k in niv) if(niv[k] && niv[k].calc && ['3','4'].includes(k)) delete niv[k].calc;   // nuevas reglas de cálculo mental: se regenera la pauta
+    data.version = 6;
+  }
+  if(data && data.niveles && data.version===6){   // problemas de la profesora de 5° y 6°, intercalados con los del banco
+    for(const lv of ['5','6']){ const n=data.niveles.find(x=>x.id===lv); if(!n) continue; const have=new Set(n.preguntas.map(q=>q.texto)); n.preguntas = intercalar(n.preguntas, clone(EXTRA2[lv]).filter(q=>!have.has(q.texto))); }
+    data.version = 7;
+  }
   if(!data || !data.niveles || (data.version||1) < BANK_VERSION) data = clone(DEFAULT_DATA);
   cfg = clone(DEFAULT_CFG);
   hist = hist && hist.used ? hist : {used:{}};
@@ -1219,6 +1307,7 @@ function load(){
 }
 function save(){ try{ localStorage.setItem(STORE, JSON.stringify({data, hist, niv, session})); }catch(e){} }
 const levelOf = id => data.niveles.find(n=>n.id===id);
+const activos = arr => (arr||[]).filter(q=>!q.off);   // los problemas desactivados no se juegan ni se imprimen
 function usedSet(lv,act){ hist.used[lv] = hist.used[lv]||{}; return new Set(hist.used[lv][act]||[]); }
 function markUsed(lv,act,keys){ hist.used[lv] = hist.used[lv]||{}; const a = (hist.used[lv][act]||[]).concat(keys); hist.used[lv][act] = a.slice(-1500); }
 
@@ -1254,7 +1343,14 @@ function buildItems(act, lv, P){
   }
   if(act==='cadena') return uniq(lv,'cadena', ()=>cadenaOne(lv), q=>q.start+':'+q.steps.map(s=>s.op+s.v).join(''), c.cantidad);
   if(act==='problemas'){
-    const bank = (levelOf(lv)||{preguntas:[]}).preguntas;
+    /* primero los asignados a esta ronda (coinciden con la pauta impresa) */
+    const plan = session ? probRound(lv, session.final ? 'final' : session.ri) : [];
+    if(plan.length >= c.cantidad){
+      const sel = clone(plan.slice(0, c.cantidad)).map((q,i)=>Object.assign(q,{pn:i+1}));
+      markUsed(lv,'problemas', sel.map(q=>q.texto));
+      return sel;
+    }
+    const bank = activos((levelOf(lv)||{preguntas:[]}).preguntas);
     const used = usedSet(lv,'problemas');
     let fresh = bank.filter(q=>!used.has(q.texto));
     if(fresh.length < c.cantidad){
@@ -1558,9 +1654,10 @@ let tie = null;
 function startTie(lv, cands, why, cb){ tie = {lv, cands, why, cb, q:null, rev:false, n:0}; show('tie'); renderTie(); }
 function tieQuestion(){
   const L = levelOf(tie.lv), u = usedSet(tie.lv,'desempate'), um = usedSet(tie.lv,'problemas');
-  let q = (L.desempate||[]).find(x=>!u.has(x.texto));
+  const D = activos(L.desempate), PR = activos(L.preguntas);
+  let q = D.find(x=>!u.has(x.texto));
   if(q) markUsed(tie.lv,'desempate',[q.texto]);
-  else { q = L.preguntas.find(x=>!um.has(x.texto)); if(q) markUsed(tie.lv,'problemas',[q.texto]); else q = pick((L.desempate||[]).concat(L.preguntas)); }
+  else { q = PR.find(x=>!um.has(x.texto)); if(q) markUsed(tie.lv,'problemas',[q.texto]); else q = pick(D.concat(PR)); }
   if(!q){ toast('No hay problemas disponibles para el desempate'); return; }
   tie.q = clone(q); tie.rev = false; tie.n++; save(); renderTie(); bell(1);
 }
@@ -1693,10 +1790,11 @@ $('#cfBank').onclick = ()=>{ edLevel = cfLv; edSel = null; draft = null; show('e
 $('#cfFs').onclick = fullscreenToggle;
 $('#cfHist').onclick = openHist;
 $('#cfPauta').onclick = ()=>openPauta();
+$('#cfPautaProb').onclick = ()=>openPautaProb();
 function openHist(){
   const left = data.niveles.map(n=>{ const u = usedSet(n.id,'problemas'), ud = usedSet(n.id,'desempate');
-    const f = n.preguntas.filter(q=>!u.has(q.texto)).length, fd = (n.desempate||[]).filter(q=>!ud.has(q.texto)).length;
-    return `${esc(n.nombre)}: <b>${f}</b> de ${n.preguntas.length} problemas sin usar · <b>${fd}</b> de ${(n.desempate||[]).length} de desempate`; }).join('<br>');
+    const AP = activos(n.preguntas), AD = activos(n.desempate), f = AP.filter(q=>!u.has(q.texto)).length, fd = AD.filter(q=>!ud.has(q.texto)).length;
+    return `${esc(n.nombre)}: <b>${f}</b> de ${AP.length} problemas sin usar · <b>${fd}</b> de ${AD.length} de desempate`; }).join('<br>');
   modal(`<h2>Historial (para no repetir preguntas)</h2>
     <p class="hint" style="font-size:.95rem">Los juegos se generan al azar y la plataforma recuerda lo que ya salió, para no repetirlo en las rondas siguientes. Los problemas salen del banco en orden, saltándose los ya usados.</p>
     <p style="margin:.4em 0 1em">${left}</p>
@@ -1796,7 +1894,7 @@ function exampleHTML(act, lv){
         <p>${qH(k.vals[k.add[0]],k.modo)} + ${qH(k.vals[k.add[1]],k.modo)} = <b>${r}</b>. Con 3 kakoomas, si encuentran 14, 22 y 9, la respuesta es 14 + 22 + 9 = <b>45</b>.</p>`};
   }
   if(act==='cadena'){
-    const c = cadenaOne(lv);
+    let c = null; for(let t=0;t<50 && !c;t++) c = cadenaOne(lv);
     return {rules:[
       `Aparece un <b>número inicial</b> y luego <b>operaciones una a una</b>.`,
       `Retén el resultado en tu mente: <b>no se puede escribir</b> hasta el final.`,
@@ -1809,7 +1907,9 @@ function exampleHTML(act, lv){
     `Antes de cada problema verán <b>su tema</b>, para que todos estén listos.`,
     `El tiempo comienza a correr <b>cuando aparece el problema</b>.`,
     `Quien tenga la respuesta, <b>toca la campana</b>. Si es correcta gana los puntos del problema.`],
-    ex:`<div class="et">Ejemplo</div><p style="font-size:1.4rem">Tengo 3 bolsas con 5 manzanas cada una. ¿Cuántas manzanas tengo?</p><div class="ex-big">3 · 5 = 15 manzanas</div>`};
+    ex: lv==='3'
+      ? `<div class="et">Ejemplo</div><p style="font-size:1.4rem">Tengo 23 manzanas y me regalan 14 más. ¿Cuántas manzanas tengo?</p><div class="ex-big">23 + 14 = 37 manzanas</div>`
+      : `<div class="et">Ejemplo</div><p style="font-size:1.4rem">Tengo 3 bolsas con 5 manzanas cada una. ¿Cuántas manzanas tengo?</p><div class="ex-big">3 · 5 = 15 manzanas</div>`};
 }
 
 /* ---------- dibujos ---------- */
@@ -1914,7 +2014,7 @@ function renderGame(){
     else if(sl.act==='cadena'){ lab=`Cadena ${p.i+1} de ${n}`; big='Cadena mental'; sub='Atentos: las operaciones aparecerán una a una.'; }
     else if(sl.act==='magico'){ lab= n>1?`Cuadrado ${p.i+1} de ${n}`:'Desafío'; big='Cuadrado mágico'; sub=(it.op==='mul'?'De multiplicación. ':'')+'Cuando lo tengas, toca la campana.'; }
     else if(sl.act==='kakooma'){ lab= n>1?`Grupo ${p.i+1} de ${n}`:'Desafío'; big='3 Kakoomas'; sub='La respuesta es la suma de los 3 números encontrados.'; }
-    else { lab=`Problema ${p.i+1} de ${n} · Tema`; big=esc(it.tema||TYPE_NAME[it.tipo]||'Problema'); sub=`${it.oa?`<span class="oa-tag">${esc(it.oa)}</span> &nbsp;`:''}Vale ${itemPts(sl,p.i)} ${itemPts(sl,p.i)===1?'punto':'puntos'} · ${itemTime(sl,p.i)} segundos`; }
+    else { lab=`Problema ${p.i+1} de ${n} · Tema`; big=esc(it.tema||TYPE_NAME[it.tipo]||'Problema'); sub=`${it.oa?`<span class="oa-tag">${esc(it.oa)}</span> &nbsp;`:''}Vale ${itemPts(sl,p.i)} ${itemPts(sl,p.i)===1?'punto':'puntos'} · ${itemTime(sl,p.i)} segundos${it.pn && niv[session.levelId].prob ? `<br><small style="font-size:.6em">Pauta del conductor: código ${niv[session.levelId].prob.code} · ${esc(session.label)} · problema ${it.pn}</small>` : ''}`; }
     html = `<div class="slidebox s-tema"><div class="lab">${lab}</div><div class="big">${big}</div><div class="sub">${sub}</div><div class="ready">¿Listos? ✋</div></div>`;
     next.textContent = sl.act==='calc'||sl.act==='recta' ? '▶ Comenzar turno' : '▶ Mostrar pregunta';
   }
@@ -2238,20 +2338,22 @@ function renderEditor(){
   $('#edBankTabs').querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{ edBank=b.dataset.b; edSel=null; draft=null; renderEditor(); });
   $('#edTabs').innerHTML = data.niveles.map(n=>`<button class="sm ${n.id===edLevel?'on':''}" data-l="${esc(n.id)}">${esc(n.nombre)}</button>`).join('');
   $('#edTabs').querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{ edLevel=b.dataset.l; edSel=null; draft=null; renderEditor(); });
-  const free = P.filter(q=>!used.has(q.texto)).length;
+  const free = activos(P).filter(q=>!used.has(q.texto)).length, nOff = P.length - activos(P).length;
   const cant = lvCfg(edLevel).problemas.cantidad;
-  $('#edInfo').textContent = edBank==='preguntas' ? `${P.length} problemas · ${free} sin usar · alcanza para ${Math.floor(free/cant)} rondas más de ${cant} problemas. Los usados se ven atenuados.` : `${P.length} problemas sorpresa · ${free} sin usar. Se usan solo cuando hay un empate.`;
+  $('#edInfo').textContent = edBank==='preguntas' ? `${P.length} problemas${nOff?` (${nOff} desactivados)`:''} · ${free} sin usar · alcanza para ${Math.floor(free/cant)} rondas más de ${cant} problemas. Los usados se ven atenuados; los desactivados (🚫) no se juegan ni se imprimen.` : `${P.length} problemas sorpresa${nOff?` (${nOff} desactivados)`:''} · ${free} sin usar. Se usan solo cuando hay un empate.`;
   $('#qlist').innerHTML = P.length ? P.map((q,i)=>`
-    <div class="qitem ${i===edSel?'on':''} ${used.has(q.texto)?'used':''}">
+    <div class="qitem ${i===edSel?'on':''} ${used.has(q.texto)?'used':''} ${q.off?'off':''}">
       <span class="n">${i+1}</span>
-      <div class="t"><div class="ty">${q.img?'🖼 ':''}${q.oa?esc(q.oa)+' · ':''}${esc(q.tema||'Sin tema')} · ${TYPE_NAME[q.tipo]} · ${q.puntos||lvCfg(edLevel).problemas.puntos} pt${used.has(q.texto)?' · usado':''}</div>${esc(q.texto.replace(/\[\[|\]\]/g,''))}</div>
+      <div class="t"><div class="ty">${q.img?'🖼 ':''}${q.oa?esc(q.oa)+' · ':''}${esc(q.tema||'Sin tema')} · ${TYPE_NAME[q.tipo]} · ${q.puntos||lvCfg(edLevel).problemas.puntos} pt${used.has(q.texto)?' · usado':''}${q.off?' · <b>desactivado</b>':''}</div>${esc(q.texto.replace(/\[\[|\]\]/g,''))}</div>
       <button data-up="${i}" title="Subir" ${i===0?'disabled':''}>↑</button>
       <button data-dn="${i}" title="Bajar" ${i===P.length-1?'disabled':''}>↓</button>
+      <button data-off="${i}" title="${q.off?'Activar (vuelve a jugarse)':'Desactivar (no se juega)'}">${q.off?'✅':'🚫'}</button>
       <button data-ed="${i}" title="Editar">✎</button>
       <button data-rm="${i}" title="Eliminar">🗑</button>
     </div>`).join('') : '<p class="hint">Este nivel no tiene problemas. Crea el primero.</p>';
   $('#qlist').querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.up; [P[i-1],P[i]]=[P[i],P[i-1]]; edSel=null; draft=null; save(); renderEditor(); });
   $('#qlist').querySelectorAll('[data-dn]').forEach(b=>b.onclick=()=>{ const i=+b.dataset.dn; [P[i+1],P[i]]=[P[i],P[i+1]]; edSel=null; draft=null; save(); renderEditor(); });
+  $('#qlist').querySelectorAll('[data-off]').forEach(b=>b.onclick=()=>{ const q=P[+b.dataset.off]; if(q.off) delete q.off; else q.off=true; edSel=null; draft=null; save(); renderEditor(); toast(q.off?'Problema desactivado':'Problema activado'); });
   $('#qlist').querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>{ edSel=+b.dataset.ed; draft=Object.assign(blankQ(), clone(P[edSel])); renderEditor(); });
   $('#qlist').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>confirmBox('¿Eliminar el problema '+(+b.dataset.rm+1)+'?', ()=>{ P.splice(+b.dataset.rm,1); edSel=null; draft=null; save(); renderEditor(); }));
   renderForm();
@@ -2303,6 +2405,7 @@ function renderForm(){
     if(d.tiempo) out.tiempo = d.tiempo;
     if(d.figura) out.figura = d.figura;
     if(d.img) out.img = d.img;
+    if(d.off) out.off = true;
     if(d.tipo==='alt'){
       const ops = d.opciones.map(s=>s.trim());
       if(ops.filter(Boolean).length<2){ toast('Escribe al menos 2 alternativas'); return; }
@@ -2423,36 +2526,40 @@ function toJpeg(src){
     im.onerror = ()=>res(null); im.src = src; });
 }
 const svgSrc = svg => svg ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ')) : null;
-async function buildPDF(levels){
+async function buildPDF(levels, custom){
   const J = await loadJsPDF();
   const doc = new J({unit:'mm', format:'letter'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 18, CW = W - 2*M;
   const NAVY=[0,54,124], GOLD=[255,221,0], GREEN=[20,120,70], GREY=[90,100,130];
-  const TITLE = 'Olimpiadas Middle - Banco de problemas';
+  const TITLE = custom ? custom.title : 'Olimpiadas Middle - Banco de problemas';
   let y = M;
   const logo = await toJpeg(LOGO);
   const newPage = ()=>{ doc.addPage(); y = M + 6; };
   const need = h => { if(y + h > H - M) newPage(); };
   // portada / encabezado
   if(logo) doc.addImage(logo.url,'JPEG',M,y,24,24);
-  doc.setTextColor(...NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(20);
+  doc.setTextColor(...NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(custom && custom.code ? 15 : 20);
   doc.text(TITLE, M+30, y+10);
   doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(...GREY);
   doc.text('George Chaytor English College · Olimpiadas de Matemáticas 3° a 6° básico', M+30, y+17);
-  doc.text(`Problemas con su solución · ${levels.map(l=>l.nombre).join(', ')} · ${new Date().toLocaleDateString('es-CL')}`, M+30, y+23);
+  doc.text(custom ? custom.sub : `Problemas con su solución · ${levels.map(l=>l.nombre).join(', ')} · ${new Date().toLocaleDateString('es-CL')}`, M+30, y+23);
+  if(custom && custom.code){ doc.setFillColor(...GOLD); doc.roundedRect(W-M-36, y+1, 36, 12, 2, 2, 'F');
+    doc.setTextColor(...NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text('CÓDIGO DE PAUTA', W-M-18, y+5, {align:'center'});
+    doc.setFontSize(14); doc.text(String(custom.code), W-M-18, y+11, {align:'center'}); }
   y += 32;
   doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.line(M,y,W-M,y); y += 8;
-  const secs = levels.flatMap(L=>[{id:L.id, nombre:L.nombre, preguntas:L.preguntas, tit:`${L.nombre} · ${L.preguntas.length} problemas`},
-    {id:L.id, nombre:L.nombre, preguntas:L.desempate||[], tit:`${L.nombre} · Reserva de desempates · ${(L.desempate||[]).length} problemas`}]).filter(x=>x.preguntas.length);
+  const secs = custom ? custom.secs : levels.flatMap(L=>[{id:L.id, nombre:L.nombre, preguntas:activos(L.preguntas), tit:`${L.nombre} · ${activos(L.preguntas).length} problemas`},
+    {id:L.id, nombre:L.nombre, preguntas:activos(L.desempate), tit:`${L.nombre} · Reserva de desempates · ${activos(L.desempate).length} problemas`}]).filter(x=>x.preguntas.length);
   for(let li=0; li<secs.length; li++){
     const L = secs[li];
     if(li>0) newPage();
     doc.setFillColor(...NAVY); doc.roundedRect(M,y,CW,11,2,2,'F');
     doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14);
     doc.text(L.tit, M+4, y+7.6); y += 17;
+    if(L.nota){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...GREY); for(const l of doc.splitTextToSize(pdfText(L.nota), CW)){ doc.text(l, M, y); y += 4.8; } y += 4; }
     for(let qi=0; qi<L.preguntas.length; qi++){
       const q = L.preguntas[qi];
-      const pts = +q.puntos || lvCfg(L.id).problemas.puntos;
+      const pts = +q.puntos || lvCfg(L.id, L.fin).problemas.puntos;
       const head = `${qi+1}. ${pdfText(q.tema||'Problema')}${q.oa?'  ·  '+q.oa:''}  ·  ${pts} ${pts===1?'punto':'puntos'}`;
       doc.setFontSize(11);
       const img = imgSrc(q) ? await toJpeg(imgSrc(q)) : (q.figura ? await toJpeg(svgSrc(q.figura)) : null);
@@ -2489,7 +2596,7 @@ async function buildPDF(levels){
   }
   const n = doc.getNumberOfPages();
   for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-    doc.text(TITLE + ' · George Chaytor English College', M, H-8); doc.text(`Página ${i} de ${n}`, W-M, H-8, {align:'right'}); }
+    doc.text(TITLE + (custom && custom.code ? ` · ${levels[0].nombre} · Código ${custom.code}` : ' · George Chaytor English College'), M, H-8); doc.text(`Página ${i} de ${n}`, W-M, H-8, {align:'right'}); }
   return doc.output('blob');
 }
 async function downloadPDF(all){
@@ -2532,6 +2639,34 @@ function calcPlan(lv){
   if(changed) save();
   return p;
 }
+/* =========================================================
+   PROBLEMAS: asignación fija por ronda + pauta impresa
+   Cada ronda (y la final) tiene asignados sus problemas, en el orden del banco,
+   para que el conductor pueda imprimirlos antes. Si un problema asignado se borra,
+   se edita o se desactiva, o cambia la cantidad, la asignación se ajusta y cambia el código.
+   ========================================================= */
+function probPlan(lv){
+  const v = niv[lv], bank = activos((levelOf(lv)||{preguntas:[]}).preguntas), have = new Set(bank.map(q=>q.texto));
+  let created = false;
+  if(!v.prob || !Array.isArray(v.prob.pre)){ v.prob = {code: rnd(1000,9999), pre:[], fin:[], start:0}; created = true; }
+  const p = v.prob, nPre = lvCfg(lv).problemas.cantidad, nFin = lvCfg(lv,true).problemas.cantidad;
+  const usaPre = v.juegos.includes('problemas'), usaFin = v.juegosFin.includes('problemas') && v.rondas.length>1;
+  let changed = false;
+  const fix = (list, n) => { const ok = (list||[]).filter(t=>have.has(t)).slice(0,n); if(!list || ok.length!==list.length) changed = true; return ok; };
+  if((!usaPre && p.pre.some(l=>l && l.length)) || (!usaFin && p.fin.length)) changed = true;
+  p.pre = usaPre ? v.rondas.map((_,i)=>fix(p.pre[i], nPre)) : [];
+  p.fin = usaFin ? fix(p.fin, nFin) : [];
+  const taken = new Set(p.pre.flat().concat(p.fin));
+  let k = Math.min(p.start||0, Math.max(0, bank.length-1));
+  const take = () => { for(let t=0;t<bank.length;t++){ const q = bank[(k+t)%bank.length]; if(!taken.has(q.texto)){ taken.add(q.texto); k = (k+t+1)%bank.length; return q.texto; } } return null; };
+  const fill = (list, n) => { while(list.length<n){ const t = take(); if(!t) break; list.push(t); changed = true; } };
+  if(usaPre) p.pre.forEach(l=>fill(l, nPre));
+  if(usaFin) fill(p.fin, nFin);
+  if(changed){ if(!created) p.code = rnd(1000,9999); save(); }
+  return p;
+}
+function probRound(lv, ri){ const p = probPlan(lv), bank = (levelOf(lv)||{preguntas:[]}).preguntas, by = new Map(bank.map(q=>[q.texto,q]));
+  return (ri==='final' ? p.fin : (p.pre[ri]||[])).map(t=>by.get(t)).filter(Boolean); }
 function calcTurns(lv, ri){ const p = calcPlan(lv); return ri==='final' ? p.fin : (p.pre[ri]||[]); }
 const plainOp = h => String(h).replace(/<span class="frac"><span>(\d+)<\/span><span>(\d+)<\/span><\/span>/g,'$1/$2').replace(/<[^>]+>/g,'').replace(/−/g,'-');
 
@@ -2611,6 +2746,35 @@ function openPauta(){
   $('#paNew').onclick = ()=>confirmBox(`Se generarán operaciones nuevas para ${L.nombre} y la pauta impresa anterior dejará de servir. ¿Continuar?`, ()=>{
     if(session && session.levelId===lv){ toast('Hay una ronda en curso en este nivel: termínala o descártala primero'); return; }
     v.calc = null; calcPlan(lv); save(); openPauta(); toast('Operaciones nuevas generadas'); });
+}
+async function buildPautaProbPDF(lv){
+  const v = niv[lv], L = levelOf(lv), p = probPlan(lv), fs = nextRound(lv)<0 ? finalists(lv) : [];
+  const secs = [];
+  const jug = i => v.rondas[i].jug.map((_,k)=>rName(lv,i,k)).join(', ');
+  p.pre.forEach((_,i)=>secs.push({id:lv, fin:false, tit:`Ronda ${i+1} · ${probRound(lv,i).length} ${probRound(lv,i).length===1?'problema':'problemas'}`, nota:`Jugadores: ${jug(i)}`, preguntas:probRound(lv,i)}));
+  if(p.fin.length) secs.push({id:lv, fin:true, tit:`Ronda final · ${p.fin.length} ${p.fin.length===1?'problema':'problemas'}`, nota: fs.length ? `Finalistas: ${fs.map(f=>f.name).join(', ')}` : 'Finalistas: los ganadores de cada ronda.', preguntas:probRound(lv,'final')});
+  const D = activos(L.desempate);
+  if(D.length) secs.push({id:lv, fin:true, tit:`Reserva de desempates · ${D.length} problemas`, nota:'Solo se usan si hay empate en el primer lugar. Salen en este orden y se saltan los que ya salieron (por eso conviene reiniciar el historial antes de la jornada).', preguntas:D});
+  return buildPDF([L], {title:'Olimpiadas Middle - Pauta de problemas', sub:`${L.nombre} · Problemas de cada ronda con su solución · Solo para el conductor · ${new Date().toLocaleDateString('es-CL')}`, code:p.code, secs});
+}
+function openPautaProb(){
+  const lv = cfLv, v = niv[lv], L = levelOf(lv);
+  const uses = v.juegos.includes('problemas') || (v.juegosFin.includes('problemas') && v.rondas.length>1);
+  if(!uses){ modal(`<h2>Pauta de problemas · ${esc(L.nombre)}</h2><p>En ${esc(L.nombre)} el juego Problemas no está seleccionado ni en las rondas ni en la final. La pauta igual puede traer la reserva de desempates desde el banco de problemas.</p><div class="row"><button class="ghost" id="mClose">Cerrar</button></div>`); return; }
+  const p = probPlan(lv), tot = p.pre.flat().length + p.fin.length, falta = p.pre.some(l=>l.length<lvCfg(lv).problemas.cantidad) || (v.juegosFin.includes('problemas') && v.rondas.length>1 && p.fin.length<lvCfg(lv,true).problemas.cantidad);
+  modal(`<h2>Pauta de problemas · ${esc(L.nombre)}</h2>
+    <p>Cada ronda ya tiene asignados sus problemas, en el orden del banco: <b>${p.pre.length ? `${p.pre.length} ${p.pre.length===1?'ronda':'rondas'} × ${lvCfg(lv).problemas.cantidad}` : 'sin rondas preliminares'}${p.fin.length?` + final × ${p.fin.length}`:''}</b> = ${tot} problemas. La pauta en PDF los trae por ronda, con su solución y desarrollo, más la reserva de desempates.</p>
+    ${falta?'<p style="color:#b00020"><b>No alcanzan los problemas del banco</b> para todas las rondas: agrega o activa problemas, o baja la cantidad.</p>':''}
+    <p style="font-size:1.3rem">Código de pauta: <b style="font-family:'Baloo 2';font-size:1.8rem;background:var(--gold);padding:0 .4em;border-radius:8px">${p.code}</b></p>
+    <p class="hint" style="font-size:.95rem">Antes de cada problema, la pantalla muestra este código y el número del problema: revisa que coincida con la hoja impresa. La asignación no cambia al reiniciar las rondas. Cambia si modificas la cantidad de problemas, el número de rondas, los juegos elegidos, o si borras, editas o desactivas un problema asignado; en ese caso cambia el código y hay que reimprimir. Descarga la pauta <b>después</b> de dejar lista la configuración.</p>
+    <div class="row"><button class="pri" id="ppPdf">📄 Descargar pauta de problemas</button><button class="ghost" id="ppNew">🎲 Asignar los problemas siguientes</button><button class="ghost" id="mClose">Cerrar</button></div>`);
+  $('#ppPdf').onclick = async ()=>{ toast('Preparando la pauta…'); let blob;
+    try{ blob = await buildPautaProbPDF(lv); }catch(e){ toast('No se pudo crear el PDF (revisa la conexión a internet)'); return; }
+    window.__lastPDF = blob; saveBlob(`Olimpiadas Middle - Pauta problemas - ${L.nombre}.pdf`, blob); };
+  $('#ppNew').onclick = ()=>confirmBox(`Se asignarán a ${L.nombre} los problemas que siguen en el banco y la pauta impresa anterior dejará de servir. ¿Continuar?`, ()=>{
+    if(session && session.levelId===lv){ toast('Hay una ronda en curso en este nivel: termínala o descártala primero'); return; }
+    const bank = activos(L.preguntas), all = p.pre.flat().concat(p.fin), last = Math.max(-1, ...all.map(t=>bank.findIndex(q=>q.texto===t)));
+    v.prob = {code: rnd(1000,9999), pre:[], fin:[], start: (last+1) % Math.max(1,bank.length)}; probPlan(lv); save(); openPautaProb(); toast('Problemas reasignados'); });
 }
 function resetRounds(lv){
   const v = niv[lv]; v.rondas.forEach(r=>{ r.res=null; r.aus=[]; r.pref=null; }); v.final=null;
