@@ -292,6 +292,13 @@ kbd{background:var(--bg3);border-radius:5px;padding:.05em .45em;font-family:inhe
 .qitem{display:flex;gap:10px;align-items:center;background:var(--bg3);border-radius:12px;padding:10px 12px;border:2px solid transparent}
 .qitem.on{border-color:var(--navy)}
 .qitem.used{opacity:.6}
+.modal .panel:has(.asg){width:min(1300px,96vw)}
+.asg-grid{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(260px,1fr);gap:12px;overflow-x:auto;padding:4px 2px 10px;margin-top:10px}
+.asg-col{background:var(--bg3,#f6f3e6);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:6px;min-height:200px}
+.asg-h{display:flex;flex-direction:column;gap:2px}.asg-h span{font-size:.8rem;opacity:.75}
+.asg-q{display:flex;gap:4px;align-items:flex-start;background:#fff;border-radius:8px;padding:6px;font-size:.85rem}
+.asg-q.res{opacity:.5}.asg-q .n{font-weight:700;min-width:1.4em}.asg-q .t{flex:1;font-weight:500}.asg-q .ty{font-size:.75rem;opacity:.7}
+.asg-q button{padding:2px 6px;min-width:0;font-size:.8rem}.asg-col select{margin-top:auto;font-size:.85rem;max-width:100%}
 .qitem.off{opacity:.45;background:repeating-linear-gradient(135deg,var(--bg3) 0 10px,#eee 10px 20px)}
 .qitem .n{font-family:'Baloo 2';font-size:1.3rem;width:1.6em;flex:none}
 .qitem .t{flex:1;font-weight:700;font-size:.95rem;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
@@ -520,6 +527,8 @@ kbd{background:var(--bg3);border-radius:5px;padding:.05em .45em;font-family:inhe
       <button class="sm" id="cfBank">📚 Banco de problemas</button>
       <button class="sm" id="cfPauta">📄 Pauta cálculo mental</button>
       <button class="sm" id="cfPautaProb">📄 Pauta problemas</button>
+      <button class="sm" id="cfAsig">🎯 Problemas por ronda</button>
+      <button class="sm" id="cfPautaNivel">📄 Pauta completa</button>
       <button class="sm" id="cfHist">🕘 Historial</button>
       <button class="sm" id="cfExport">Exportar</button>
       <button class="sm" id="cfImport">Importar</button>
@@ -696,8 +705,8 @@ const CFG_INFO = {
 };
 /* OA basales (Actualización de la Priorización Curricular 2023) que trabaja cada actividad */
 const OA_ACT = {
-  calc:   {'3':'OA 6', '4':'OA 2 · OA 3 · OA 5', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7 · OA 8'},
-  cadena: {'3':'OA 6', '4':'OA 2 · OA 5 · OA 6', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7'},
+  calc:   {'3':'OA 6 · OA 8', '4':'OA 2 · OA 3 · OA 5', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2'},
+  cadena: {'3':'OA 6 · OA 8', '4':'OA 2 · OA 3 · OA 5', '5':'OA 3 · OA 4 · OA 6', '6':'OA 2 · OA 7'},
   magico: {'3':'OA 6', '4':'OA 3', '5':'OA 6', '6':'OA 2 · OA 8'},
   recta:  {'3':'OA 3', '4':'OA 1 · OA 8', '5':'OA 7 · OA 11', '6':'OA 5 · OA 8'},
   kakooma:{'3':'OA 6', '4':'OA 3', '5':'OA 6', '6':'OA 2'},
@@ -706,17 +715,35 @@ const OA_ACT = {
 const COLORS = ['#e4572e','#1f78d1','#1e9e5a','#8e44ad','#d99a00','#d6336c','#0f9aa8','#6b7280'];
 
 /* ---------- 1. Cálculo mental ---------- */
-/* Criterios de cálculo mental por nivel (definidos por el profesor):
-   3°: solo sumas y restas hasta 100 (y básicas hasta 18), mayoría sin reserva; completar decena, dobles sin reserva, asociatividad. Sin multiplicación ni división.
-   4°: tablas hasta 10 · 10 (sin multiplicaciones mayores); sumas y restas con números mayores; dobles y mitades; redondeo.
-   5°: naturales más amplios; multiplicar y dividir con múltiplos de 10, 100 y 1.000; distributividad; aproximaciones en sumas y restas.
-   6°: tablas consolidadas; multiplicaciones y divisiones más complejas; división por potencias de 10; decimales simples; fracciones de referencia; cálculos equivalentes. */
+/* Criterios de cálculo mental por nivel (definidos por Feñaño con coordinación, 18 nov. 2026).
+   En todos los niveles: solo las 4 operaciones, escritas como operación. Sin estimación, redondeo, decimales ni fracciones.
+   3°: sumas y restas hasta 100, la mayoría sin reserva (≈ 1 de cada 7 con reserva); multiplicación solo · 2 y · 10 (por 1 a 10). Sin división.
+   4°: sumas y restas hasta 100, con reserva; multiplicación por 1, 2, 3, 4, 5 y 10 (por 1 a 10). Sin división.
+   5°: números hasta 100 y resultados hasta 200; tablas hasta 10 · 10; división exacta, inversa de las tablas.
+   6°: sumas y restas hasta 200; multiplicación hasta 13 · 13, decenas por unidades y decenas por decenas; división exacta, inversa de lo anterior.
+   La cadena mental usa los mismos límites en cada paso (LIM). */
 /* sin reserva: ninguna posición suma 10 o más (o, en la resta, ninguna cifra del sustraendo es mayor) */
 const sinRes = (a,b)=>{ for(;a||b;a=Math.floor(a/10),b=Math.floor(b/10)) if(a%10+b%10>9) return false; return true; };
 const sinPres = (a,b)=>{ for(;a||b;a=Math.floor(a/10),b=Math.floor(b/10)) if(a%10<b%10) return false; return true; };
+/* límites por nivel, compartidos por el cálculo mental y la cadena */
+const LIM = {
+  '3':{suma:100, sinRes:true, mul:[2,10], hasta:10, div:false},
+  '4':{suma:100, mul:[1,2,3,4,5,10], hasta:10, div:false},
+  '5':{num:100, suma:200, tabla:10, div:true},
+  '6':{suma:200, tabla:13, decenas:true, div:true}
+};
+/* ¿es v · f una multiplicación permitida en el nivel? (v puede ser cualquiera de los dos factores) */
+function mulOk(lv, x, y){
+  const L = LIM[lv];
+  if(L.mul) return (L.mul.includes(y) && x>=1 && x<=L.hasta) || (L.mul.includes(x) && y>=1 && y<=L.hasta);
+  if(x>=2 && y>=2 && x<=L.tabla && y<=L.tabla) return true;
+  if(L.decenas){ const dec = n => n>=10 && n<=90 && n%10===0, uni = n => n>=2 && n<=9; return (dec(x)&&uni(y)) || (uni(x)&&dec(y)) || (dec(x)&&dec(y)); }
+  return false;
+}
+/* ¿es a : d una división permitida? (inversa de una multiplicación permitida, resultado natural) */
+const divOk = (lv, a, d) => LIM[lv].div && d>=2 && a%d===0 && a/d>=2 && mulOk(lv, a/d, d);
 const CALC = {
  '3':[
-  /* Ajustado con coordinación (nov. 2026): solo adición y sustracción, dobles sin reserva y pocas operaciones con reserva (≈ 1 de cada 7). */
   ()=>{const a=rnd(2,9),b=rnd(2,9); return [`${a} + ${b}`, N(a+b)];},                                            // básicas hasta 18
   ()=>{const a=rnd(11,18),b=rnd(2,9); if(a-b<2) return null; return [`${a} − ${b}`, N(a-b)];},
   ()=>{const a=rnd(12,88),b=rnd(1,8); if(!sinRes(a,b)) return null; return [`${a} + ${b}`, N(a+b)];},             // dos cifras + una, sin reserva
@@ -724,81 +751,68 @@ const CALC = {
   ()=>{const a=rnd(1,8)*10,b=rnd(1,8)*10; if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},              // decenas
   ()=>{const a=rnd(3,10)*10,b=rnd(1,a/10-1)*10; return [`${a} − ${b}`, N(a-b)];},
   ()=>{const a=rnd(21,99),b=rnd(1,8); if(!sinPres(a,b)) return null; return [`${a} − ${b}`, N(a-b)];},            // dos cifras − una, sin reserva
-  ()=>{const a=rnd(31,99),b=rnd(1,Math.floor(a/10)-1)*10; return [`${a} − ${b}`, N(a-b)];},                       // menos decenas
   ()=>{const a=rnd(32,99),b=rnd(11,a-11); if(!sinPres(a,b)) return null; return [`${a} − ${b}`, N(a-b)];},        // dos cifras − dos cifras, sin reserva
-  ()=>{const a=rnd(2,8),b=10-a,c=rnd(2,9); return [`${a} + ${b} + ${c}`, N(10+c)];},                              // asociar para formar 10
-  ()=>{const n=pick([rnd(2,5), rnd(1,4)*10+rnd(1,4), rnd(1,5)*10]); return [`El doble de ${n}`, N(2*n)];},       // dobles sin reserva
-  ()=>{const n=rnd(1,4)*10+rnd(1,4); return [`${n} + ${n}`, N(2*n)];},
-  ()=>{const a=rnd(11,89); if(a%10===0) return null; const b=10-a%10; return [`${a} + ${b}`, N(a+b)];},           // completar la decena (con reserva)
-  ()=>{const a=rnd(12,79),b=rnd(2,9); if(sinRes(a,b)) return null; return [`${a} + ${b}`, N(a+b)];}               // con reserva
+  ()=>{const n=pick([rnd(2,5), rnd(1,4)*10+rnd(1,4), rnd(1,5)*10]); return [`${n} + ${n}`, N(2*n)];},             // dobles sin reserva, escritos como suma
+  ()=>{const a=rnd(12,79),b=rnd(2,9); if(sinRes(a,b)) return null; return [`${a} + ${b}`, N(a+b)];},              // con reserva (pocas)
+  ()=>{const a=rnd(1,10); return Math.random()<.5 ? [`${a} · 2`, N(a*2)] : [`2 · ${a}`, N(a*2)];},                 // · 2
+  ()=>{const a=rnd(1,10); return Math.random()<.5 ? [`${a} · 10`, N(a*10)] : [`10 · ${a}`, N(a*10)];},             // · 10
+  ()=>{const a=rnd(2,10),f=pick([2,10]); return [`${a} · ${f}`, N(a*f)];}
  ],
  '4':[
-  /* Multiplicación: solo tablas hasta 10 · 10 (acordado con coordinación, nov. 2026) */
-  ()=>{const x=rnd(6,9),y=rnd(3,9); return [`${x} · ${y}`, N(x*y)];},
-  ()=>{const x=rnd(2,10),y=rnd(2,10); return [`${x} · ${y}`, N(x*y)];},
-  ()=>{const x=rnd(3,9),y=rnd(6,10); return [`${y} · ${x}`, N(x*y)];},
-  ()=>{const a=rnd(12,68)*10,b=rnd(11,29)*10; return [`${a} + ${b}`, N(a+b)];},
-  ()=>{const a=rnd(40,99)*10,b=rnd(11,39)*10; return [`${a} − ${b}`, N(a-b)];},
-  ()=>{const a=rnd(120,780),b=pick([99,98,199]); return [`${a} + ${b}`, N(a+b)];},                                // redondear y compensar
-  ()=>{const a=rnd(210,990),b=pick([99,98]); return [`${a} − ${b}`, N(a-b)];},
-  ()=>{const a=rnd(31,95),b=rnd(12,a-11); return [`${a} − ${b}`, N(a-b)];},
-  ()=>{const n=rnd(13,250); return [`El doble de ${n}`, N(2*n)];},
-  ()=>{const n=rnd(13,250)*2; return [`La mitad de ${n}`, N(n/2)];},
-  ()=>{const n=rnd(101,989); if(n%10===5||n%10===0) return null; return [`Redondea ${n} a la decena`, N(Math.round(n/10)*10)];},
-  ()=>{const n=rnd(1010,9890); if(n%100===50||n%100===0) return null; return [`Redondea ${N(n)} a la centena`, N(Math.round(n/100)*100)];}
+  ()=>{const a=rnd(11,89),b=rnd(2,9); if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},
+  ()=>{const a=rnd(11,79),b=rnd(11,89); if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},                // con o sin reserva
+  ()=>{const a=rnd(21,100),b=rnd(2,9); return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const a=rnd(31,100),b=rnd(11,a-5); return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const a=rnd(1,9)*10,b=rnd(11,89); if(a+b>100) return null; return [`${a} + ${b}`, N(a+b)];},
+  ()=>{const f=pick([1,2,3,4,5,10]),a=rnd(1,10); return Math.random()<.5 ? [`${a} · ${f}`, N(a*f)] : [`${f} · ${a}`, N(a*f)];},
+  ()=>{const f=pick([3,4,5]),a=rnd(3,10); return [`${a} · ${f}`, N(a*f)];},
+  ()=>{const f=pick([2,4,10]),a=rnd(2,10); return [`${f} · ${a}`, N(a*f)];}
  ],
  '5':[
-  ()=>{const a=rnd(2,9)*10,b=rnd(2,9)*10; return [`${a} · ${b}`, N(a*b)];},
-  ()=>{const a=rnd(2,9)*100,b=rnd(2,9); return [`${a} · ${b}`, N(a*b)];},
-  ()=>{const a=rnd(12,99),k=pick([10,100,1000]); return [`${a} · ${N(k)}`, N(a*k)];},
-  ()=>{const q=rnd(12,99),k=pick([10,100,1000]); return [`${N(q*k)} : ${N(k)}`, N(q)];},
-  ()=>{const d=rnd(2,9),q=rnd(2,9)*pick([10,100]); return [`${N(d*q)} : ${d}`, N(q)];},
-  ()=>{const d=rnd(2,9)*10,q=rnd(2,9)*10; return [`${N(d*q)} : ${d}`, N(q)];},
-  ()=>{const a=rnd(3,9),b=rnd(11,19); return [`${a} · ${b}`, N(a*b)];},                                           // distributividad
-  ()=>{const a=rnd(3,9),b=pick([21,31,41,51,99,98,49,102,201]); return [`${a} · ${b}`, N(a*b)];},
-  ()=>{const a=rnd(2,9),b=pick([15,25,50]); return [`${a} · ${b}`, N(a*b)];},
-  ()=>{const a=rnd(11,89)*100,b=rnd(11,89)*100; return [`${N(a)} + ${N(b)}`, N(a+b)];},
-  ()=>{const a=rnd(30,99)*100,b=rnd(11,29)*100; return [`${N(a)} − ${N(b)}`, N(a-b)];},
-  ()=>{const a=rnd(24,178)*50,b=pick([999,1999,2999]); return [`${N(a)} + ${N(b)}`, N(a+b)];},                    // aproximar y compensar
-  ()=>{const a=rnd(4,9)*1000,b=pick([999,1999,2999]); if(b>=a) return null; return [`${N(a)} − ${N(b)}`, N(a-b)];},
-  ()=>{const n=rnd(11,99)*50; return [`El doble de ${N(n)}`, N(2*n)];}
+  ()=>{const a=rnd(15,100),b=rnd(15,100); return [`${a} + ${b}`, N(a+b)];},                                        // resultado hasta 200
+  ()=>{const a=rnd(26,99),b=rnd(6,49); return [`${a} + ${b}`, N(a+b)];},
+  ()=>{const a=rnd(30,100),b=rnd(11,a-5); return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const a=rnd(41,100),b=rnd(6,39); return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const x=rnd(2,10),y=rnd(2,10); return [`${x} · ${y}`, N(x*y)];},
+  ()=>{const x=rnd(6,9),y=rnd(6,9); return [`${x} · ${y}`, N(x*y)];},
+  ()=>{const d=rnd(2,10),q=rnd(2,10); return [`${d*q} : ${d}`, N(q)];},                                             // inversa de las tablas
+  ()=>{const d=rnd(6,9),q=rnd(3,9); return [`${d*q} : ${d}`, N(q)];}
  ],
  '6':[
+  ()=>{const a=rnd(45,160),b=rnd(25,200-a); if(b<25) return null; return [`${a} + ${b}`, N(a+b)];},               // hasta 200
+  ()=>{const a=rnd(56,149),b=rnd(26,49); if(a+b>200) return null; return [`${a} + ${b}`, N(a+b)];},
+  ()=>{const a=rnd(100,200),b=rnd(25,a-10); return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const a=rnd(110,200),b=rnd(46,99); return [`${a} − ${b}`, N(a-b)];},
+  ()=>{const x=rnd(2,13),y=rnd(11,13); return Math.random()<.5 ? [`${x} · ${y}`, N(x*y)] : [`${y} · ${x}`, N(x*y)];}, // tablas del 11 al 13
   ()=>{const x=rnd(6,9),y=rnd(6,9); return [`${x} · ${y}`, N(x*y)];},
-  ()=>{const a=pick([15,25,35,45]),b=pick([4,6,8]); return [`${a} · ${b}`, N(a*b)];},
-  ()=>{const a=rnd(6,49)*2; return [`${a} · 5`, N(a*5)];},
-  ()=>{const a=pick([4,8,12,16,24,32,36]); return [`${a} · 25`, N(a*25)];},
-  ()=>{const a=rnd(3,9),b=pick([99,101,49,51,199]); return [`${a} · ${b}`, N(a*b)];},                             // cálculo equivalente
-  ()=>{const n=rnd(12,999),k=pick([10,100,1000]); if(n%10===0) return null; return [`${N(n)} : ${N(k)}`, N(n/k)];},
-  ()=>{const d=rnd(3,9),q=rnd(11,25); return [`${N(d*q)} : ${d}`, N(q)];},
-  ()=>{const d=pick([20,30,40,50]),q=rnd(2,9)*10; return [`${N(d*q)} : ${d}`, N(q)];},
-  ()=>{const a=rnd(3,19)*5,b=rnd(3,19)*5; if(a%10===0&&b%10===0) return null; return [`${N(a/10)} + ${N(b/10)}`, N((a+b)/10)];},
-  ()=>{const a=pick([5,15,25,35]),b=pick([2,4,6,8]); return [`${N(a/10)} · ${b}`, N(a*b/10)];},
-  ()=>{const a=pick([25,75]),b=pick([4,8,12]); return [`${N(a/100)} · ${b}`, N(a*b/100)];},
-  ()=>{const a=rnd(2,9),b=pick([50,25,75]); return [`${a} − ${N(b/100)}`, N(a-b/100)];},
-  ()=>{const [n,d]=pick([[1,2],[1,4],[3,4],[1,5],[1,10],[1,3]]); const base=d*rnd(2,15); return [`${fracH(n,d)} de ${base}`, N(n*base/d)];},
-  ()=>{const a=rnd(101,799),b=pick([99,199,98]); return [`${a} + ${b}`, N(a+b)];},
-  ()=>{const b=rnd(21,179)*5; return [`1.000 − ${b}`, N(1000-b)];}
+  ()=>{const x=rnd(2,9)*10,y=rnd(2,9); return Math.random()<.5 ? [`${x} · ${y}`, N(x*y)] : [`${y} · ${x}`, N(x*y)];}, // decenas por unidades
+  ()=>{const x=rnd(2,9)*10,y=rnd(2,9)*10; return [`${x} · ${y}`, N(x*y)];},                                        // decenas por decenas
+  ()=>{const d=rnd(3,13),q=rnd(3,13); if(d<11&&q<11) return null; return [`${d*q} : ${d}`, N(q)];},              // inversa de las tablas hasta 13
+  ()=>{const d=rnd(2,9),q=rnd(2,9)*10; return [`${N(d*q)} : ${d}`, N(q)];},                                         // inversa de decenas por unidades
+  ()=>{const d=rnd(2,9)*10,q=rnd(2,9)*10; return [`${N(d*q)} : ${d}`, N(q)];}                                       // inversa de decenas por decenas
  ]
 };
 const calcOne = lv => { const r = pick(CALC[lv])(); return r ? {expr:r[0], ans:r[1]} : null; };
 
-/* ---------- 2. Cadena mental ---------- */
+/* ---------- 2. Cadena mental ----------
+   Cada paso respeta los límites del nivel (LIM): el número que se suma o resta, y los factores y divisores. */
 const CADENA = {
-  '3':{n:4, start:[5,20],  sum:[1,9],  max:60,  mul:null,  div:null,   ms:3500, w:['s'], sinRes:true},   // solo + y −, sin reserva
-  '4':{n:5, start:[10,40], sum:[2,20], max:150, mul:[2,5], div:[2,5],  ms:3000, w:['s','s','m','d']},
-  '5':{n:5, start:[10,60], sum:[5,30], max:400, mul:[2,9], div:[2,9],  ms:2800, w:['s','s','m','d']},
-  '6':{n:6, start:[20,99], sum:[10,60],max:800, mul:[2,9], div:[2,10], ms:2500, w:['s','m','d']}
+  '3':{n:4, start:[[2,10],[11,40]], sum:[1,20], max:100, ms:3500, w:['s','s','s','m']},
+  '4':{n:5, start:[[2,10],[11,50]], sum:[2,40], max:100, ms:3000, w:['s','s','m']},
+  '5':{n:5, start:[[2,10],[11,60]], sum:[5,60], max:200, ms:2800, w:['s','s','m','d']},
+  '6':{n:6, start:[[2,13],[20,90],[30,120]], sum:[10,90],max:400, ms:2500, w:['s','m','d']}
 };
 function cadenaOne(lv){
-  const P = CADENA[lv];
-  const S = cur => { for(let i=0;i<60;i++){ const v=rnd(P.sum[0],P.sum[1]), plus=Math.random()<.55, r=plus?cur+v:cur-v; if(P.sinRes && !(plus?sinRes(cur,v):sinPres(cur,v))) continue; if(r>=0 && r<=P.max) return {op:plus?'+':'−', v, res:r}; } return null; };
-  const M = cur => { if(!P.mul || cur<=0) return null; const o=[]; for(let f=P.mul[0];f<=P.mul[1];f++) if(cur*f<=P.max) o.push(f); if(!o.length) return null; const f=pick(o); return {op:'·', v:f, res:cur*f}; };
-  const D = cur => { if(!P.div || cur<=1) return null; const o=[]; for(let d=P.div[0];d<=P.div[1];d++) if(cur%d===0 && cur/d>=2) o.push(d); if(!o.length) return null; const d=pick(o); return {op:':', v:d, res:cur/d}; };
+  const P = CADENA[lv], L = LIM[lv];
+  const S = cur => { for(let i=0;i<60;i++){ const v=rnd(P.sum[0],P.sum[1]), plus=Math.random()<.55, r=plus?cur+v:cur-v;
+      if(L.sinRes && !(plus?sinRes(cur,v):sinPres(cur,v)) && Math.random()<.85) continue;
+      if(r>=0 && r<=P.max) return {op:plus?'+':'−', v, res:r}; } return null; };
+  const M = cur => { const o=[]; for(let f=1;f<=90;f++) if(f!==1 && mulOk(lv,cur,f) && cur*f<=P.max) o.push(f); if(!o.length) return null; const f=pick(o); return {op:'·', v:f, res:cur*f}; };
+  const D = cur => { if(!L.div) return null; const o=[]; for(let d=2;d<=90;d++) if(divOk(lv,cur,d)) o.push(d); if(!o.length) return null; const d=pick(o); return {op:':', v:d, res:cur/d}; };
   const F = {s:S, m:M, d:D};
-  const start = rnd(P.start[0], P.start[1]);
+  const rg = pick(P.start), start = rnd(rg[0], rg[1]);
   let cur = start; const steps=[];
-  for(let i=0;i<P.n;i++){ const s = F[pick(P.w)](cur) || D(cur) || S(cur) || M(cur) || (P.sinRes ? null : {op:'+', v:1, res:cur+1}); if(!s) return null; steps.push(s); cur = s.res; }
+  for(let i=0;i<P.n;i++){ const s = F[pick(P.w)](cur) || D(cur) || S(cur) || M(cur); if(!s) return null; steps.push(s); cur = s.res; }
   return {start, steps, ans:cur, ms:P.ms};
 }
 
@@ -973,9 +987,16 @@ function uniq(lv, act, make, key, n, seen){
   markUsed(lv,act,keys);
   return out;
 }
+const pautaTag = t => `<br><small style="font-size:.6em">Pauta del conductor: código ${pautaCode(session.levelId)} · ${esc(session.label)} · ${t}</small>`;
 function buildItems(act, lv, P){
   const c = gc(act);
   if(act==='calc'){ const turns = session ? calcTurns(lv, session.ri) : []; return P.map((p,i)=>({player:i, ops: clone(turns[i]||[])})); }   // operaciones fijas: coinciden con la pauta impresa
+  /* juegos generados: salen de la lista fija de la ronda (coincide con la pauta impresa) */
+  const G = session ? genRound(lv, session.final ? 'final' : session.ri) : null;
+  if(G){
+    if(act==='recta'){ const out=[]; for(let j=0;j<c.cantidad;j++) for(let i=0;i<P.length;i++){ const x=(G.recta[i]||[])[j]; if(x) out.push(Object.assign(clone(x),{player:i, pn:j+1})); } return out; }
+    if(act==='cadena' || act==='magico' || act==='kakooma') return clone((G[act]||[]).slice(0, c.cantidad)).map((x,i)=>Object.assign(x,{pn:i+1}));
+  }
   if(act==='recta'){
     const n = c.cantidad*P.length;
     const items = uniq(lv,'recta', k=>rectaOne(lv,k), r=>r.key, n);
@@ -996,7 +1017,7 @@ function buildItems(act, lv, P){
       markUsed(lv,'problemas', sel.map(q=>q.texto));
       return sel;
     }
-    const bank = activos((levelOf(lv)||{preguntas:[]}).preguntas);
+    const bank = session && session.final && bankFin(lv).length ? bankFin(lv) : bankPre(lv);
     const used = usedSet(lv,'problemas');
     let fresh = bank.filter(q=>!used.has(q.texto));
     if(fresh.length < c.cantidad){
@@ -1076,6 +1097,12 @@ function normNiv(base){
   niv = niv || {};
   for(const n of data.niveles){
     if(!Array.isArray(n.desempate)) n.desempate = clone(DESEMPATE[n.id]||[]);
+    /* bancos separados (18 nov. 2026): los problemas de 2 puntos pasan al banco Final; los desempates, de menor a mayor dificultad */
+    if(!Array.isArray(n.final)){
+      n.final = n.preguntas.filter(q=>(+q.puntos||1)>=2);
+      n.preguntas = n.preguntas.filter(q=>(+q.puntos||1)<2);
+      n.desempate = n.desempate.map((q,i)=>({q,i})).sort((a,b)=>pasos(a.q)-pasos(b.q) || String(a.q.texto).length-String(b.q.texto).length || a.i-b.i).map(x=>x.q);
+    }
     const v = niv[n.id] = Object.assign(newNiv(base), niv[n.id]||{});
     v.cfg = v.cfg || {}; v.cfg.pre = v.cfg.pre || {}; v.cfg.fin = v.cfg.fin || {};
     for(const a in DEFAULT_CFG) v.cfg.pre[a] = Object.assign({}, DEFAULT_CFG[a], v.cfg.pre[a]||{});
@@ -1086,6 +1113,7 @@ function normNiv(base){
     if(!Array.isArray(v.juegosFin)) v.juegosFin = v.orden.filter(a=>!v.juegos.includes(a));
     v.juegosFin = ok(v.juegosFin); if(!v.juegosFin.length) v.juegosFin = v.juegos.slice();
     sortGames(v);
+    if((v.calcRules||0) < 3){ v.calc = null; v.calcRules = 3; }   // criterios de cálculo mental del 18 nov. 2026: pauta nueva
     if((v.cfgV||1) < 2){ for(const a in v.cfg.pre){ if(DEFAULT_CFG[a].cantidad!==undefined) v.cfg.pre[a].cantidad = 1; if(v.cfg.fin[a]) delete v.cfg.fin[a].cantidad; } v.cfgV = 2; }
     if(!Array.isArray(v.rondas) || !v.rondas.length) v.rondas = [newRonda()];
     v.rondas.forEach(r=>{ r.jug = Array.isArray(r.jug)&&r.jug.length ? r.jug : ['','','']; r.aus = r.aus||[]; r.res = r.res||null; });
@@ -1437,6 +1465,8 @@ $('#cfFs').onclick = fullscreenToggle;
 $('#cfHist').onclick = openHist;
 $('#cfPauta').onclick = ()=>openPauta();
 $('#cfPautaProb').onclick = ()=>openPautaProb();
+$('#cfAsig').onclick = ()=>openAsignar(cfLv);
+$('#cfPautaNivel').onclick = ()=>openPautaNivel();
 function openHist(){
   const left = data.niveles.map(n=>{ const u = usedSet(n.id,'problemas'), ud = usedSet(n.id,'desempate');
     const AP = activos(n.preguntas), AD = activos(n.desempate), f = AP.filter(q=>!u.has(q.texto)).length, fd = AD.filter(q=>!ud.has(q.texto)).length;
@@ -1655,12 +1685,12 @@ function renderGame(){
   else if(p.ph==='tema'){
     const it = IT();
     let lab='', big='', sub='';
-    if(sl.act==='calc'){ const t=pl[it.player]; lab='Cálculo mental contra reloj'; big=`Turno de <span class="who" style="--c:${t.color}">${esc(t.name)}</span>`; sub=`Tendrás ${gc('calc').tiempo} segundos. ¡Responde todas las que puedas!<br><small style="font-size:.6em">Pauta del conductor: código ${niv[session.levelId].calc ? niv[session.levelId].calc.code : ''} · ${esc(session.label)} · turno ${p.i+1}</small>`; }
-    else if(sl.act==='recta'){ const t=pl[it.player]; const k=Math.floor(p.i/pl.length)+1; lab=`Recta numérica · número ${k} de ${gc('recta').cantidad}`; big=`Turno de <span class="who" style="--c:${t.color}">${esc(t.name)}</span>`; sub='Pasa adelante: señalarás con el dedo dónde va el número.'; }
-    else if(sl.act==='cadena'){ lab=`Cadena ${p.i+1} de ${n}`; big='Cadena mental'; sub='Atentos: las operaciones aparecerán una a una.'; }
-    else if(sl.act==='magico'){ lab= n>1?`Cuadrado ${p.i+1} de ${n}`:'Desafío'; big='Cuadrado mágico'; sub=(it.op==='mul'?'De multiplicación. ':'')+'Cuando lo tengas, toca la campana.'; }
-    else if(sl.act==='kakooma'){ lab= n>1?`Grupo ${p.i+1} de ${n}`:'Desafío'; big='3 Kakoomas'; sub='La respuesta es la suma de los 3 números encontrados.'; }
-    else { lab=`Problema ${p.i+1} de ${n} · Tema`; big=esc(it.tema||TYPE_NAME[it.tipo]||'Problema'); sub=`${it.oa?`<span class="oa-tag">${esc(it.oa)}</span> &nbsp;`:''}Vale ${itemPts(sl,p.i)} ${itemPts(sl,p.i)===1?'punto':'puntos'} · ${itemTime(sl,p.i)} segundos${it.pn && niv[session.levelId].prob ? `<br><small style="font-size:.6em">Pauta del conductor: código ${niv[session.levelId].prob.code} · ${esc(session.label)} · problema ${it.pn}</small>` : ''}`; }
+    if(sl.act==='calc'){ const t=pl[it.player]; lab='Cálculo mental contra reloj'; big=`Turno de <span class="who" style="--c:${t.color}">${esc(t.name)}</span>`; sub=`Tendrás ${gc('calc').tiempo} segundos. ¡Responde todas las que puedas!<br><small style="font-size:.6em">Pauta del conductor: código ${pautaCode(session.levelId)} · ${esc(session.label)} · turno ${p.i+1}</small>`; }
+    else if(sl.act==='recta'){ const t=pl[it.player]; const k=Math.floor(p.i/pl.length)+1; lab=`Recta numérica · número ${k} de ${gc('recta').cantidad}`; big=`Turno de <span class="who" style="--c:${t.color}">${esc(t.name)}</span>`; sub='Pasa adelante: señalarás con el dedo dónde va el número.' + (it.pn ? pautaTag(`turno ${it.player+1} · número ${it.pn}`) : ''); }
+    else if(sl.act==='cadena'){ lab=`Cadena ${p.i+1} de ${n}`; big='Cadena mental'; sub='Atentos: las operaciones aparecerán una a una.' + (it.pn ? pautaTag(`cadena ${it.pn}`) : ''); }
+    else if(sl.act==='magico'){ lab= n>1?`Cuadrado ${p.i+1} de ${n}`:'Desafío'; big='Cuadrado mágico'; sub=(it.op==='mul'?'De multiplicación. ':'')+'Cuando lo tengas, toca la campana.' + (it.pn ? pautaTag(`cuadrado ${it.pn}`) : ''); }
+    else if(sl.act==='kakooma'){ lab= n>1?`Grupo ${p.i+1} de ${n}`:'Desafío'; big='3 Kakoomas'; sub='La respuesta es la suma de los 3 números encontrados.' + (it.pn ? pautaTag(`grupo ${it.pn}`) : ''); }
+    else { lab=`Problema ${p.i+1} de ${n} · Tema`; big=esc(it.tema||TYPE_NAME[it.tipo]||'Problema'); sub=`${it.oa?`<span class="oa-tag">${esc(it.oa)}</span> &nbsp;`:''}Vale ${itemPts(sl,p.i)} ${itemPts(sl,p.i)===1?'punto':'puntos'} · ${itemTime(sl,p.i)} segundos${it.pn ? pautaTag(`problema ${it.pn}`) : ''}`; }
     html = `<div class="slidebox s-tema"><div class="lab">${lab}</div><div class="big">${big}</div><div class="sub">${sub}</div><div class="ready">¿Listos? ✋</div></div>`;
     next.textContent = sl.act==='calc'||sl.act==='recta' ? '▶ Comenzar turno' : '▶ Mostrar pregunta';
   }
@@ -1721,7 +1751,7 @@ function itemHTML(){
     } else {
       const op = it.ops[st.k] || nextCalcOp(it);
       const lastLog = st.log[st.log.length-1];
-      body += `<div class="calc-n">Operación <b>${st.k+1}</b> &nbsp;·&nbsp; Pauta ${niv[session.levelId].calc ? niv[session.levelId].calc.code : ''}</div><div class="bigop">${op.expr} = <span class="q">?</span></div>
+      body += `<div class="calc-n">Operación <b>${st.k+1}</b> &nbsp;·&nbsp; Pauta ${pautaCode(session.levelId)}</div><div class="bigop">${op.expr} = <span class="q">?</span></div>
         <div class="judge"><button class="y" data-j="1">✓ Correcta</button><button class="n" data-j="0">✗ Incorrecta / paso</button>${st.log.length?'<button class="u" data-j="u">↶ Deshacer</button>':''}</div>
         <div class="calc-info"><span>Correctas: <b>${st.ok}</b></span>${lastLog?`<span>Anterior: ${it.ops[lastLog.i].expr} = <b style="font-size:1.6rem;color:var(--navy)">${it.ops[lastLog.i].ans}</b> ${lastLog.ok?'✓':'✗'}</span>`:''}</div>`;
     }
@@ -1975,18 +2005,22 @@ $('#resNext').onclick = ()=>{ const lv = resLv; if(resLive){ session = null; sav
    EDITOR DEL BANCO DE PROBLEMAS
    ========================================================= */
 let edLevel = '3', edSel = null, draft = null, edBank = 'preguntas';
-const edUsedKey = () => edBank==='preguntas' ? 'problemas' : 'desempate';
+const edUsedKey = () => edBank==='desempate' ? 'desempate' : 'problemas';
 function blankQ(tipo='corta'){ return {img:'', oa:'', tema:'', tipo, texto:'', opciones:['','','',''], correcta:0, respuesta:'', numeros:['','','','','',''], explicacion:'', puntos:'', tiempo:'', figura:''}; }
 function renderEditor(){
   const L = levelOf(edLevel); if(!Array.isArray(L[edBank])) L[edBank] = [];
   const P = L[edBank], used = usedSet(edLevel, edUsedKey());
-  $('#edBankTabs').innerHTML = `<button class="sm ${edBank==='preguntas'?'on':''}" data-b="preguntas">Problemas de las rondas (${L.preguntas.length})</button><button class="sm ${edBank==='desempate'?'on':''}" data-b="desempate">Reserva de desempates (${(L.desempate||[]).length})</button>`;
+  $('#edBankTabs').innerHTML = `<button class="sm ${edBank==='preguntas'?'on':''}" data-b="preguntas">Preliminares (${L.preguntas.length})</button><button class="sm ${edBank==='final'?'on':''}" data-b="final">Final (${(L.final||[]).length})</button><button class="sm ${edBank==='desempate'?'on':''}" data-b="desempate">Desempate (${(L.desempate||[]).length})</button><button class="sm" id="edAsig">🎯 Problemas por ronda</button>`;
   $('#edBankTabs').querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{ edBank=b.dataset.b; edSel=null; draft=null; renderEditor(); });
+  $('#edAsig').onclick = ()=>openAsignar(edLevel);
   $('#edTabs').innerHTML = data.niveles.map(n=>`<button class="sm ${n.id===edLevel?'on':''}" data-l="${esc(n.id)}">${esc(n.nombre)}</button>`).join('');
   $('#edTabs').querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{ edLevel=b.dataset.l; edSel=null; draft=null; renderEditor(); });
   const free = activos(P).filter(q=>!used.has(q.texto)).length, nOff = P.length - activos(P).length;
   const cant = lvCfg(edLevel).problemas.cantidad;
-  $('#edInfo').textContent = edBank==='preguntas' ? `${P.length} problemas${nOff?` (${nOff} desactivados)`:''} · ${free} sin usar · alcanza para ${Math.floor(free/cant)} rondas más de ${cant} problemas. Los usados se ven atenuados; los desactivados (🚫) no se juegan ni se imprimen.` : `${P.length} problemas sorpresa${nOff?` (${nOff} desactivados)`:''} · ${free} sin usar. Se usan solo cuando hay un empate.`;
+  $('#edInfo').textContent = (edBank==='preguntas' ? `Banco Preliminares: ${P.length} problemas${nOff?` (${nOff} desactivados)`:''}. Se usan en las rondas de los tríos.`
+    : edBank==='final' ? `Banco Final: ${P.length} problemas${nOff?` (${nOff} desactivados)`:''}. Se usan solo en la ronda final.`
+    : `Reserva de desempates: ${P.length} problemas${nOff?` (${nOff} desactivados)`:''} · ${free} sin usar. Se usan solo cuando hay un empate en el primer lugar.`)
+    + ' Los desactivados (🚫) no se juegan ni se imprimen. Para elegir qué problemas van en cada ronda: 🎯 Problemas por ronda.';
   $('#qlist').innerHTML = P.length ? P.map((q,i)=>`
     <div class="qitem ${i===edSel?'on':''} ${used.has(q.texto)?'used':''} ${q.off?'off':''}">
       <span class="n">${i+1}</span>
@@ -2172,77 +2206,87 @@ function toJpeg(src){
     im.onerror = ()=>res(null); im.src = src; });
 }
 const svgSrc = svg => svg ? 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg.replace('<svg ','<svg xmlns="http://www.w3.org/2000/svg" ')) : null;
+/* ---------- PDF: piezas comunes ---------- */
+const PDFC = {NAVY:[0,54,124], GOLD:[255,221,0], GREEN:[20,120,70], GREY:[90,100,130]};
+function pdfKit(doc, M){
+  const K = {doc, M, W:doc.internal.pageSize.getWidth(), H:doc.internal.pageSize.getHeight(), y:M};
+  K.CW = K.W - 2*M;
+  K.newPage = ()=>{ doc.addPage(); K.y = M + 6; };
+  K.need = h => { if(K.y + h > K.H - M) K.newPage(); };
+  K.header = async (title, l1, l2, code)=>{
+    const logo = await toJpeg(LOGO);
+    if(logo) doc.addImage(logo.url,'JPEG',M,K.y,24,24);
+    doc.setTextColor(...PDFC.NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(code ? 15 : 20);
+    doc.text(title, M+30, K.y+10);
+    doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(...PDFC.GREY);
+    doc.text(l1, M+30, K.y+17); doc.text(l2, M+30, K.y+23);
+    if(code){ doc.setFillColor(...PDFC.GOLD); doc.roundedRect(K.W-M-36, K.y+1, 36, 12, 2, 2, 'F');
+      doc.setTextColor(...PDFC.NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text('CÓDIGO DE PAUTA', K.W-M-18, K.y+5, {align:'center'});
+      doc.setFontSize(14); doc.text(String(code), K.W-M-18, K.y+11, {align:'center'}); }
+    K.y += 32; doc.setDrawColor(...PDFC.GOLD); doc.setLineWidth(1.2); doc.line(M,K.y,K.W-M,K.y); K.y += 8;
+  };
+  K.band = (t, h=11, fs=14)=>{ K.need(h+8); doc.setFillColor(...PDFC.NAVY); doc.roundedRect(M,K.y,K.CW,h,2,2,'F');
+    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(fs); doc.text(t, M+4, K.y+h*0.69); K.y += h+6; };
+  K.sub = t => { K.need(14); doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...PDFC.NAVY); doc.text(t, M, K.y);
+    K.y += 2; doc.setDrawColor(...PDFC.GOLD); doc.setLineWidth(.7); doc.line(M, K.y, K.W-M, K.y); K.y += 6; };
+  K.note = t => { doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...PDFC.GREY); for(const l of doc.splitTextToSize(pdfText(t), K.CW)){ K.need(5); doc.text(l, M, K.y); K.y += 4.8; } K.y += 2; };
+  /* un problema del banco, con su solución */
+  K.problem = async (q, num, lvId, fin)=>{
+    const CW = K.CW, lh = 5.2;
+    const pts = +q.puntos || lvCfg(lvId, fin).problemas.puntos;
+    const head = `${num}. ${pdfText(q.tema||'Problema')}${q.oa?'  ·  '+q.oa:''}  ·  ${pts} ${pts===1?'punto':'puntos'}`;
+    doc.setFontSize(11);
+    const img = imgSrc(q) ? await toJpeg(imgSrc(q)) : (q.figura ? await toJpeg(svgSrc(q.figura)) : null);
+    const textLines = (imgSrc(q) ? [] : doc.splitTextToSize(pdfText(q.texto), CW-6));
+    const opts = q.tipo==='alt' ? (q.opciones||[]).map((o,i)=>`${'ABCD'[i]}) ${pdfText(o)}`) : [];
+    const kk = q.tipo==='kakooma' ? [`Números: ${(q.numeros||[]).join('   ')}`] : [];
+    const ans = q.tipo==='alt' ? `${'ABCD'[q.correcta]}) ${pdfText((q.opciones||[])[q.correcta])}` : q.tipo==='kakooma' ? (()=>{ const v=(q.numeros||[]).map(parseQ); const f=v.every(Boolean)?kkCount(v):[]; return f[0]? `${q.numeros[f[0].add[0]]} + ${q.numeros[f[0].add[1]]} = ${q.numeros[f[0].res]}` : '-'; })() : pdfText(q.respuesta);
+    const ansLines = doc.splitTextToSize('Solución: ' + ans, CW-10);
+    const expLines = q.explicacion ? doc.splitTextToSize('Desarrollo: ' + pdfText(q.explicacion), CW-10) : [];
+    let imgW=0, imgH=0;
+    if(img){ imgW = Math.min(125, img.w*0.15); imgH = imgW*img.h/img.w; if(imgH>72){ imgH=72; imgW=imgH*img.w/img.h; } }
+    const total = 8 + textLines.length*lh + (imgH?imgH+4:0) + (opts.length+kk.length)*lh + 4 + (ansLines.length+expLines.length)*lh + 8;
+    K.need(Math.min(total, img ? 8+imgH+6+(ansLines.length+expLines.length)*lh+10 : 45));
+    doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.NAVY); doc.setFontSize(11.5);
+    doc.text(head, K.M, K.y); K.y += 2;
+    doc.setDrawColor(220,214,190); doc.setLineWidth(.3); doc.line(K.M,K.y,K.W-K.M,K.y); K.y += 5;
+    doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.setFontSize(11);
+    for(const l of textLines){ K.need(lh); doc.text(l, K.M+3, K.y); K.y += lh; }
+    if(img){ K.need(imgH+4); doc.addImage(img.url,'JPEG',K.M+3,K.y,imgW,imgH); K.y += imgH+4; }
+    for(const l of opts.concat(kk)){ K.need(lh); doc.text(l, K.M+8, K.y); K.y += lh; }
+    K.y += 2;
+    const boxH = (ansLines.length+expLines.length)*lh + 4;
+    K.need(boxH+2);
+    doc.setFillColor(232,246,238); doc.roundedRect(K.M+2, K.y-4, CW-4, boxH, 2, 2, 'F');
+    doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.GREEN);
+    for(const l of ansLines){ doc.text(l, K.M+6, K.y); K.y += lh; }
+    doc.setFont('helvetica','normal'); doc.setTextColor(...PDFC.GREY);
+    for(const l of expLines){ doc.text(l, K.M+6, K.y); K.y += lh; }
+    K.y += 7;
+  };
+  K.footer = left => { const n = doc.getNumberOfPages();
+    for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...PDFC.GREY);
+      doc.text(left, K.M, K.H-8); doc.text(`Página ${i} de ${n}`, K.W-K.M, K.H-8, {align:'right'}); } };
+  return K;
+}
 async function buildPDF(levels, custom){
   const J = await loadJsPDF();
-  const doc = new J({unit:'mm', format:'letter'});
-  const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight(), M = 18, CW = W - 2*M;
-  const NAVY=[0,54,124], GOLD=[255,221,0], GREEN=[20,120,70], GREY=[90,100,130];
+  const doc = new J({unit:'mm', format:'letter'}), K = pdfKit(doc, 18);
   const TITLE = custom ? custom.title : 'Olimpiadas Middle - Banco de problemas';
-  let y = M;
-  const logo = await toJpeg(LOGO);
-  const newPage = ()=>{ doc.addPage(); y = M + 6; };
-  const need = h => { if(y + h > H - M) newPage(); };
-  // portada / encabezado
-  if(logo) doc.addImage(logo.url,'JPEG',M,y,24,24);
-  doc.setTextColor(...NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(custom && custom.code ? 15 : 20);
-  doc.text(TITLE, M+30, y+10);
-  doc.setFont('helvetica','normal'); doc.setFontSize(11); doc.setTextColor(...GREY);
-  doc.text('George Chaytor English College · Olimpiadas de Matemáticas 3° a 6° básico', M+30, y+17);
-  doc.text(custom ? custom.sub : `Problemas con su solución · ${levels.map(l=>l.nombre).join(', ')} · ${new Date().toLocaleDateString('es-CL')}`, M+30, y+23);
-  if(custom && custom.code){ doc.setFillColor(...GOLD); doc.roundedRect(W-M-36, y+1, 36, 12, 2, 2, 'F');
-    doc.setTextColor(...NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text('CÓDIGO DE PAUTA', W-M-18, y+5, {align:'center'});
-    doc.setFontSize(14); doc.text(String(custom.code), W-M-18, y+11, {align:'center'}); }
-  y += 32;
-  doc.setDrawColor(...GOLD); doc.setLineWidth(1.2); doc.line(M,y,W-M,y); y += 8;
-  const secs = custom ? custom.secs : levels.flatMap(L=>[{id:L.id, nombre:L.nombre, preguntas:activos(L.preguntas), tit:`${L.nombre} · ${activos(L.preguntas).length} problemas`},
-    {id:L.id, nombre:L.nombre, preguntas:activos(L.desempate), tit:`${L.nombre} · Reserva de desempates · ${activos(L.desempate).length} problemas`}]).filter(x=>x.preguntas.length);
+  await K.header(TITLE, 'George Chaytor English College · Olimpiadas de Matemáticas 3° a 6° básico',
+    custom ? custom.sub : `Problemas con su solución · ${levels.map(l=>l.nombre).join(', ')} · ${new Date().toLocaleDateString('es-CL')}`, custom && custom.code);
+  const secs = custom ? custom.secs : levels.flatMap(L=>[
+    {id:L.id, fin:false, preguntas:activos(L.preguntas), tit:`${L.nombre} · Rondas preliminares · ${activos(L.preguntas).length} problemas`},
+    {id:L.id, fin:true,  preguntas:activos(L.final), tit:`${L.nombre} · Ronda final · ${activos(L.final).length} problemas`},
+    {id:L.id, fin:true,  preguntas:activos(L.desempate), tit:`${L.nombre} · Reserva de desempates · ${activos(L.desempate).length} problemas`}]).filter(x=>x.preguntas.length);
   for(let li=0; li<secs.length; li++){
-    const L = secs[li];
-    if(li>0) newPage();
-    doc.setFillColor(...NAVY); doc.roundedRect(M,y,CW,11,2,2,'F');
-    doc.setTextColor(255,255,255); doc.setFont('helvetica','bold'); doc.setFontSize(14);
-    doc.text(L.tit, M+4, y+7.6); y += 17;
-    if(L.nota){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...GREY); for(const l of doc.splitTextToSize(pdfText(L.nota), CW)){ doc.text(l, M, y); y += 4.8; } y += 4; }
-    for(let qi=0; qi<L.preguntas.length; qi++){
-      const q = L.preguntas[qi];
-      const pts = +q.puntos || lvCfg(L.id, L.fin).problemas.puntos;
-      const head = `${qi+1}. ${pdfText(q.tema||'Problema')}${q.oa?'  ·  '+q.oa:''}  ·  ${pts} ${pts===1?'punto':'puntos'}`;
-      doc.setFontSize(11);
-      const img = imgSrc(q) ? await toJpeg(imgSrc(q)) : (q.figura ? await toJpeg(svgSrc(q.figura)) : null);
-      const textLines = (imgSrc(q) ? [] : doc.splitTextToSize(pdfText(q.texto), CW-6));
-      const opts = q.tipo==='alt' ? (q.opciones||[]).map((o,i)=>`${'ABCD'[i]}) ${pdfText(o)}`) : [];
-      const kk = q.tipo==='kakooma' ? [`Números: ${(q.numeros||[]).join('   ')}`] : [];
-      let ans = q.tipo==='alt' ? `${'ABCD'[q.correcta]}) ${pdfText((q.opciones||[])[q.correcta])}` : q.tipo==='kakooma' ? (()=>{ const v=(q.numeros||[]).map(parseQ); const f=v.every(Boolean)?kkCount(v):[]; return f[0]? `${q.numeros[f[0].add[0]]} + ${q.numeros[f[0].add[1]]} = ${q.numeros[f[0].res]}` : '-'; })() : pdfText(q.respuesta);
-      const ansLines = doc.splitTextToSize('Solución: ' + ans, CW-10);
-      const expLines = q.explicacion ? doc.splitTextToSize('Desarrollo: ' + pdfText(q.explicacion), CW-10) : [];
-      let imgW=0, imgH=0;
-      if(img){ imgW = Math.min(125, img.w*0.15); imgH = imgW*img.h/img.w; if(imgH>72){ imgH=72; imgW=imgH*img.w/img.h; } }
-      const lh = 5.2;
-      const total = 8 + textLines.length*lh + (imgH?imgH+4:0) + (opts.length+kk.length)*lh + 4 + (ansLines.length+expLines.length)*lh + 8;
-      need(Math.min(total, img ? 8+imgH+6+(ansLines.length+expLines.length)*lh+10 : 45));
-      // encabezado del problema
-      doc.setFont('helvetica','bold'); doc.setTextColor(...NAVY); doc.setFontSize(11.5);
-      doc.text(head, M, y); y += 2;
-      doc.setDrawColor(220,214,190); doc.setLineWidth(.3); doc.line(M,y,W-M,y); y += 5;
-      doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30); doc.setFontSize(11);
-      for(const l of textLines){ need(lh); doc.text(l, M+3, y); y += lh; }
-      if(img){ need(imgH+4); doc.addImage(img.url,'JPEG',M+3,y,imgW,imgH); y += imgH+4; }
-      for(const l of opts.concat(kk)){ need(lh); doc.text(l, M+8, y); y += lh; }
-      y += 2;
-      // solución
-      const boxH = (ansLines.length+expLines.length)*lh + 4;
-      need(boxH+2);
-      doc.setFillColor(232,246,238); doc.roundedRect(M+2, y-4, CW-4, boxH, 2, 2, 'F');
-      doc.setFont('helvetica','bold'); doc.setTextColor(...GREEN);
-      for(const l of ansLines){ doc.text(l, M+6, y); y += lh; }
-      doc.setFont('helvetica','normal'); doc.setTextColor(...GREY);
-      for(const l of expLines){ doc.text(l, M+6, y); y += lh; }
-      y += 7;
-    }
+    const S = secs[li];
+    if(li>0) K.newPage();
+    K.band(S.tit);
+    if(S.nota) K.note(S.nota);
+    for(let qi=0; qi<S.preguntas.length; qi++) await K.problem(S.preguntas[qi], qi+1, S.id, S.fin);
   }
-  const n = doc.getNumberOfPages();
-  for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(...GREY);
-    doc.text(TITLE + (custom && custom.code ? ` · ${levels[0].nombre} · Código ${custom.code}` : ' · George Chaytor English College'), M, H-8); doc.text(`Página ${i} de ${n}`, W-M, H-8, {align:'right'}); }
+  K.footer(TITLE + (custom && custom.code ? ` · ${levels[0].nombre} · Código ${custom.code}` : ' · George Chaytor English College'));
   return doc.output('blob');
 }
 async function downloadPDF(all){
@@ -2291,28 +2335,108 @@ function calcPlan(lv){
    para que el conductor pueda imprimirlos antes. Si un problema asignado se borra,
    se edita o se desactiva, o cambia la cantidad, la asignación se ajusta y cambia el código.
    ========================================================= */
+/* ---------- problemas: dificultad aproximada y parecido ---------- */
+const pasos = q => (String(q.explicacion||'').match(/;/g)||[]).length + 1;
+const palabrasQ = t => new Set(String(t||'').toLowerCase().replace(/[^a-záéíóúñ0-9 ]/g,' ').split(/\s+/).filter(w=>w.length>4));
+function parecidos(a,b){ if(a.img && a.img===b.img) return true; const A=palabrasQ(a.texto), B=palabrasQ(b.texto); let k=0; for(const w of A) if(B.has(w)) k++; return k>=3; }
+const bankPre = lv => activos((levelOf(lv)||{}).preguntas), bankFin = lv => activos((levelOf(lv)||{}).final);
+/* largo de las listas: hasta 5 por ronda (o la cantidad configurada, si es mayor), según lo que alcance el banco */
+function probLens(lv){
+  const v = niv[lv], R = v.rondas.length, nP = bankPre(lv).length, nF = bankFin(lv).length;
+  const cP = lvCfg(lv).problemas.cantidad, cF = lvCfg(lv,true).problemas.cantidad;
+  return {R, cP, cF, nP, nF, pre: Math.min(Math.max(5,cP), Math.floor(nP/Math.max(1,R))), fin: Math.min(Math.max(5,cF), nF)};
+}
+/* propuesta equilibrada: cada ronda recibe un problema de cada nivel de dificultad, sin repetir tema ni problemas parecidos */
+function probPropuesta(lv){
+  const z = probLens(lv), R = z.R;
+  const pool = bankPre(lv).map((q,i)=>({q,i,s:pasos(q)})).sort((a,b)=>a.s-b.s || a.i-b.i);
+  const m = Math.min(pool.length, R*z.pre), picks = [];
+  for(let j=0;j<m;j++) picks.push(pool[m<=1 ? 0 : Math.round(j*(pool.length-1)/(m-1))]);
+  const uniq = [...new Set(picks)]; for(const x of pool){ if(uniq.length>=m) break; if(!uniq.includes(x)) uniq.push(x); }
+  uniq.sort((a,b)=>a.s-b.s || a.i-b.i);
+  const rounds = Array.from({length:R},()=>[]);
+  for(let k=0;k<z.pre;k++){
+    const tier = uniq.slice(k*R,(k+1)*R), order = [...rounds.keys()]; if(k%2) order.reverse();
+    for(const r of order){
+      let best=-1, bs=1e9;
+      tier.forEach((t,j)=>{ if(!t) return; const sc = rounds[r].reduce((a,x)=>a + (parecidos(x.q,t.q)?10:0) + (x.q.tema===t.q.tema?3:0) + (x.q.oa===t.q.oa?1:0), 0); if(sc<bs){ bs=sc; best=j; } });
+      if(best>=0){ rounds[r].push(tier[best]); tier[best]=null; }
+    }
+  }
+  const fin = bankFin(lv).map((q,i)=>({q,i,s:pasos(q)})).sort((a,b)=>a.s-b.s || a.i-b.i).slice(0, z.fin);
+  return {pre: rounds.map(l=>l.map(x=>x.q.texto)), fin: fin.map(x=>x.q.texto)};
+}
+function probSorteo(lv){
+  const z = probLens(lv), P = shuffle(bankPre(lv)).map(q=>q.texto), F = shuffle(bankFin(lv)).map(q=>q.texto);
+  return {pre: Array.from({length:z.R},(_,r)=>P.slice(r*z.pre,(r+1)*z.pre)), fin: F.slice(0, z.fin)};
+}
+/* =========================================================
+   PROBLEMAS: lista fija y ordenada por ronda (y para la final)
+   Se juegan los primeros de la lista, según la cantidad configurada, así que la pauta
+   impresa sirve aunque la cantidad se decida en el momento.
+   modo 'usuario' (parte de la propuesta equilibrada y se ajusta a mano) o 'aleatorio' (sorteo).
+   ========================================================= */
 function probPlan(lv){
-  const v = niv[lv], bank = activos((levelOf(lv)||{preguntas:[]}).preguntas), have = new Set(bank.map(q=>q.texto));
-  let created = false;
-  if(!v.prob || !Array.isArray(v.prob.pre)){ v.prob = {code: rnd(1000,9999), pre:[], fin:[], start:0}; created = true; }
-  const p = v.prob, nPre = lvCfg(lv).problemas.cantidad, nFin = lvCfg(lv,true).problemas.cantidad;
-  const usaPre = v.juegos.includes('problemas'), usaFin = v.juegosFin.includes('problemas') && v.rondas.length>1;
+  const v = niv[lv], z = probLens(lv);
+  if(!v.prob || v.prob.v!==2){ const p = probPropuesta(lv); v.prob = {v:2, code:rnd(1000,9999), modo:'usuario', pre:p.pre, fin:p.fin}; save(); return v.prob; }
+  const p = v.prob, okP = new Set(bankPre(lv).map(q=>q.texto)), okF = new Set(bankFin(lv).map(q=>q.texto));
   let changed = false;
-  const fix = (list, n) => { const ok = (list||[]).filter(t=>have.has(t)).slice(0,n); if(!list || ok.length!==list.length) changed = true; return ok; };
-  if((!usaPre && p.pre.some(l=>l && l.length)) || (!usaFin && p.fin.length)) changed = true;
-  p.pre = usaPre ? v.rondas.map((_,i)=>fix(p.pre[i], nPre)) : [];
-  p.fin = usaFin ? fix(p.fin, nFin) : [];
-  const taken = new Set(p.pre.flat().concat(p.fin));
-  let k = Math.min(p.start||0, Math.max(0, bank.length-1));
-  const take = () => { for(let t=0;t<bank.length;t++){ const q = bank[(k+t)%bank.length]; if(!taken.has(q.texto)){ taken.add(q.texto); k = (k+t+1)%bank.length; return q.texto; } } return null; };
-  const fill = (list, n) => { while(list.length<n){ const t = take(); if(!t) break; list.push(t); changed = true; } };
-  if(usaPre) p.pre.forEach(l=>fill(l, nPre));
-  if(usaFin) fill(p.fin, nFin);
-  if(changed){ if(!created) p.code = rnd(1000,9999); save(); }
+  const fix = (l, ok) => { const o = (l||[]).filter(t=>ok.has(t)); if(!l || o.length!==l.length) changed = true; return o; };
+  while(p.pre.length < z.R){ p.pre.push(null); }
+  p.pre = p.pre.map(l=>l===null ? null : fix(l, okP)); p.fin = fix(p.fin, okF);
+  const taken = new Set(p.pre.slice(0,z.R).filter(Boolean).flat().concat(p.fin));
+  const freeP = bankPre(lv).filter(q=>!taken.has(q.texto)), freeF = bankFin(lv).filter(q=>!taken.has(q.texto));
+  p.pre = p.pre.map((l,i)=>{ if(i>=z.R) return l; const nueva = l===null; l = l||[]; const n = nueva ? Math.max(z.cP, z.pre) : z.cP;
+    while(l.length<n && freeP.length){ l.push(freeP.shift().texto); changed = true; } if(nueva) changed = true; return l; });
+  while(p.fin.length < z.cF && freeF.length){ p.fin.push(freeF.shift().texto); changed = true; }
+  if(changed){ p.code = rnd(1000,9999); save(); }
   return p;
 }
-function probRound(lv, ri){ const p = probPlan(lv), bank = (levelOf(lv)||{preguntas:[]}).preguntas, by = new Map(bank.map(q=>[q.texto,q]));
-  return (ri==='final' ? p.fin : (p.pre[ri]||[])).map(t=>by.get(t)).filter(Boolean); }
+function probRound(lv, ri){
+  const p = probPlan(lv), L = levelOf(lv), by = new Map((L.preguntas||[]).concat(L.final||[]).map(q=>[q.texto,q]));
+  return (ri==='final' ? p.fin : (p.pre[ri]||[])).map(t=>by.get(t)).filter(Boolean);
+}
+/* =========================================================
+   JUEGOS GENERADOS (cadena, cuadrado, kakoomas, recta): lista fija por ronda
+   ========================================================= */
+const GEN_LEN = 5;
+const genKey = {
+  cadena: q => q.start+':'+q.steps.map(s=>s.op+s.v).join(''),
+  magico: m => m.sol.map(qkey).join(',')+'|'+m.oculto.join(','),
+  kakooma: g => g.kks.map(kkKey).join('#'),
+  recta: r => r.key
+};
+function genPlan(lv){
+  const v = niv[lv]; let created = false, changed = false;
+  if(!v.gen || v.gen.v!==1){ v.gen = {v:1, code:rnd(1000,9999), pre:[], fin:null}; created = true; }
+  const g = v.gen, seen = {cadena:new Set(), magico:new Set(), kakooma:new Set(), recta:new Set()};
+  g.pre.concat(g.fin?[g.fin]:[]).forEach(r=>{ if(!r) return;
+    ['cadena','magico','kakooma'].forEach(a=>(r[a]||[]).forEach(x=>seen[a].add(genKey[a](x))));
+    (r.recta||[]).forEach(t=>t.forEach(x=>seen.recta.add(genKey.recta(x)))); });
+  const make = {
+    cadena: ()=>cadenaOne(lv), magico: ()=>magicoOne(lv),
+    kakooma: ()=>{ const ks=[], inner=new Set(); for(let t=0;t<300 && ks.length<3;t++){ const k=kakoomaOne(lv); if(!k) continue; const key=kkKey(k); if(inner.has(key)) continue; inner.add(key); ks.push(k); } return ks.length===3 ? {kks:ks} : null; }
+  };
+  const mk = (act, n, arg) => { const out=[]; for(let t=0; out.length<n && t<n*400; t++){ const x = act==='recta' ? rectaOne(lv, arg+out.length) : make[act](); if(!x) continue; const k=genKey[act](x); if(seen[act].has(k) && t<n*300) continue; seen[act].add(k); out.push(x); } return out; };
+  const fill = (r, fin, turns) => {
+    for(const a of ['cadena','magico','kakooma']){ r[a] = r[a]||[]; const n = Math.max(GEN_LEN, lvCfg(lv,fin)[a].cantidad); if(r[a].length<n){ r[a] = r[a].concat(mk(a, n-r[a].length)); changed = true; } }
+    r.recta = r.recta||[]; const n = Math.max(GEN_LEN, lvCfg(lv,fin).recta.cantidad);
+    while(r.recta.length<turns){ r.recta.push([]); changed = true; }
+    r.recta.forEach((t,i)=>{ if(t.length<n){ r.recta[i] = t.concat(mk('recta', n-t.length, t.length+i)); changed = true; } });
+  };
+  v.rondas.forEach((rd,i)=>{ g.pre[i] = g.pre[i]||{}; fill(g.pre[i], false, rd.jug.length); });
+  g.fin = g.fin||{}; fill(g.fin, true, Math.max(2, v.rondas.length));
+  if(changed){ if(!created) g.code = rnd(1000,9999); save(); }
+  return g;
+}
+const genRound = (lv, ri) => { const g = genPlan(lv); return ri==='final' ? g.fin : g.pre[ri]; };
+/* código único de pauta por nivel: cambia si cambia cualquiera de las asignaciones */
+function pautaCode(lv){
+  calcPlan(lv); probPlan(lv); genPlan(lv);
+  const v = niv[lv], s = [v.calc.code, v.prob.code, v.gen.code].join('-');
+  let h = 7; for(const ch of s) h = (h*31 + ch.charCodeAt(0)) % 9000;
+  return 1000 + h;
+}
 function calcTurns(lv, ri){ const p = calcPlan(lv); return ri==='final' ? p.fin : (p.pre[ri]||[]); }
 const plainOp = h => String(h).replace(/<span class="frac"><span>(\d+)<\/span><span>(\d+)<\/span><\/span>/g,'$1/$2').replace(/<[^>]+>/g,'').replace(/−/g,'-');
 
@@ -2350,7 +2474,7 @@ async function buildPautaPDF(lv){
       doc.text(`${L.nombre} · ${s.tit} · Turnos de ${lvCfg(lv, s.tit==='Ronda final').calc.tiempo} s · Solo para el conductor`, M+20, y+12.5);
       doc.setFillColor(...GOLD); doc.roundedRect(W-M-36, y+1, 36, 12, 2, 2, 'F');
       doc.setTextColor(...NAVY); doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.text('CÓDIGO DE PAUTA', W-M-18, y+5, {align:'center'});
-      doc.setFontSize(14); doc.text(String(p.code), W-M-18, y+11, {align:'center'});
+      doc.setFontSize(14); doc.text(String(pautaCode(lv)), W-M-18, y+11, {align:'center'});
       y += 20;
       doc.setFillColor(...NAVY); doc.roundedRect(M,y,CW,9,2,2,'F'); doc.setTextColor(255,255,255); doc.setFontSize(12);
       doc.text(`${L.nombre} · ${s.tit}${from?' (continuación)':''}`, M+4, y+6.3); y += 14;
@@ -2373,7 +2497,7 @@ async function buildPautaPDF(lv){
   }
   const n = doc.getNumberOfPages();
   for(let i=1;i<=n;i++){ doc.setPage(i); doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GREY);
-    doc.text(`${TITLE} · ${L.nombre} · Código ${p.code}`, M, H-7); doc.text(`Página ${i} de ${n}`, W-M, H-7, {align:'right'}); }
+    doc.text(`${TITLE} · ${L.nombre} · Código ${pautaCode(lv)}`, M, H-7); doc.text(`Página ${i} de ${n}`, W-M, H-7, {align:'right'}); }
   return doc.output('blob');
 }
 function openPauta(){
@@ -2383,7 +2507,7 @@ function openPauta(){
   const p = calcPlan(lv);
   modal(`<h2>Pauta de cálculo mental · ${esc(L.nombre)}</h2>
     <p>Las operaciones de cada turno ya están definidas y guardadas. La pauta en PDF las trae numeradas, con su respuesta, por ronda y por turno.</p>
-    <p style="font-size:1.3rem">Código de pauta: <b style="font-family:'Baloo 2';font-size:1.8rem;background:var(--gold);padding:0 .4em;border-radius:8px">${p.code}</b></p>
+    <p style="font-size:1.3rem">Código de pauta: <b style="font-family:'Baloo 2';font-size:1.8rem;background:var(--gold);padding:0 .4em;border-radius:8px">${pautaCode(lv)}</b></p>
     <p class="hint" style="font-size:.95rem">Durante el turno, la pantalla muestra el número de la operación y este código: revisa que coincida con tu hoja impresa. Las operaciones no cambian al reiniciar las rondas; solo cambian si presionas «Generar nuevas operaciones», y en ese caso hay que volver a imprimir.</p>
     <div class="row"><button class="pri" id="paPdf">📄 Descargar pauta en PDF</button><button class="ghost" id="paNew">🎲 Generar nuevas operaciones</button><button class="ghost" id="mClose">Cerrar</button></div>`);
   $('#paPdf').onclick = async ()=>{ toast('Preparando la pauta…'); let blob;
@@ -2394,33 +2518,168 @@ function openPauta(){
     v.calc = null; calcPlan(lv); save(); openPauta(); toast('Operaciones nuevas generadas'); });
 }
 async function buildPautaProbPDF(lv){
-  const v = niv[lv], L = levelOf(lv), p = probPlan(lv), fs = nextRound(lv)<0 ? finalists(lv) : [];
+  const v = niv[lv], L = levelOf(lv), p = probPlan(lv), fs = nextRound(lv)<0 ? finalists(lv) : [], cP = lvCfg(lv).problemas.cantidad, cF = lvCfg(lv,true).problemas.cantidad;
   const secs = [];
   const jug = i => v.rondas[i].jug.map((_,k)=>rName(lv,i,k)).join(', ');
-  p.pre.forEach((_,i)=>secs.push({id:lv, fin:false, tit:`Ronda ${i+1} · ${probRound(lv,i).length} ${probRound(lv,i).length===1?'problema':'problemas'}`, nota:`Jugadores: ${jug(i)}`, preguntas:probRound(lv,i)}));
-  if(p.fin.length) secs.push({id:lv, fin:true, tit:`Ronda final · ${p.fin.length} ${p.fin.length===1?'problema':'problemas'}`, nota: fs.length ? `Finalistas: ${fs.map(f=>f.name).join(', ')}` : 'Finalistas: los ganadores de cada ronda.', preguntas:probRound(lv,'final')});
+  if(v.juegos.includes('problemas')) v.rondas.forEach((_,i)=>{ const Q = probRound(lv,i); secs.push({id:lv, fin:false, tit:`Ronda ${i+1} · lista de ${Q.length} problemas`, nota:`Jugadores: ${jug(i)}. Se juegan los primeros de la lista, en orden (hoy: ${cP}).`, preguntas:Q}); });
+  if(v.juegosFin.includes('problemas') && v.rondas.length>1){ const Q = probRound(lv,'final'); secs.push({id:lv, fin:true, tit:`Ronda final · lista de ${Q.length} problemas`, nota:`${fs.length ? `Finalistas: ${fs.map(f=>f.name).join(', ')}.` : 'Finalistas: los ganadores de cada ronda.'} Se juegan los primeros de la lista, en orden (hoy: ${cF}).`, preguntas:Q}); }
   const D = activos(L.desempate);
   if(D.length) secs.push({id:lv, fin:true, tit:`Reserva de desempates · ${D.length} problemas`, nota:'Solo se usan si hay empate en el primer lugar. Salen en este orden y se saltan los que ya salieron (por eso conviene reiniciar el historial antes de la jornada).', preguntas:D});
-  return buildPDF([L], {title:'Olimpiadas Middle - Pauta de problemas', sub:`${L.nombre} · Problemas de cada ronda con su solución · Solo para el conductor · ${new Date().toLocaleDateString('es-CL')}`, code:p.code, secs});
+  return buildPDF([L], {title:'Olimpiadas Middle - Pauta de problemas', sub:`${L.nombre} · Problemas de cada ronda con su solución · Solo para el conductor · ${new Date().toLocaleDateString('es-CL')}`, code:pautaCode(lv), secs});
 }
 function openPautaProb(){
   const lv = cfLv, v = niv[lv], L = levelOf(lv);
-  const uses = v.juegos.includes('problemas') || (v.juegosFin.includes('problemas') && v.rondas.length>1);
-  if(!uses){ modal(`<h2>Pauta de problemas · ${esc(L.nombre)}</h2><p>En ${esc(L.nombre)} el juego Problemas no está seleccionado ni en las rondas ni en la final. La pauta igual puede traer la reserva de desempates desde el banco de problemas.</p><div class="row"><button class="ghost" id="mClose">Cerrar</button></div>`); return; }
-  const p = probPlan(lv), tot = p.pre.flat().length + p.fin.length, falta = p.pre.some(l=>l.length<lvCfg(lv).problemas.cantidad) || (v.juegosFin.includes('problemas') && v.rondas.length>1 && p.fin.length<lvCfg(lv,true).problemas.cantidad);
+  const p = probPlan(lv), z = probLens(lv);
+  const falta = p.pre.slice(0,z.R).some(l=>(l||[]).length<z.cP) || p.fin.length<z.cF;
   modal(`<h2>Pauta de problemas · ${esc(L.nombre)}</h2>
-    <p>Cada ronda ya tiene asignados sus problemas, en el orden del banco: <b>${p.pre.length ? `${p.pre.length} ${p.pre.length===1?'ronda':'rondas'} × ${lvCfg(lv).problemas.cantidad}` : 'sin rondas preliminares'}${p.fin.length?` + final × ${p.fin.length}`:''}</b> = ${tot} problemas. La pauta en PDF los trae por ronda, con su solución y desarrollo, más la reserva de desempates.</p>
-    ${falta?'<p style="color:#b00020"><b>No alcanzan los problemas del banco</b> para todas las rondas: agrega o activa problemas, o baja la cantidad.</p>':''}
-    <p style="font-size:1.3rem">Código de pauta: <b style="font-family:'Baloo 2';font-size:1.8rem;background:var(--gold);padding:0 .4em;border-radius:8px">${p.code}</b></p>
-    <p class="hint" style="font-size:.95rem">Antes de cada problema, la pantalla muestra este código y el número del problema: revisa que coincida con la hoja impresa. La asignación no cambia al reiniciar las rondas. Cambia si modificas la cantidad de problemas, el número de rondas, los juegos elegidos, o si borras, editas o desactivas un problema asignado; en ese caso cambia el código y hay que reimprimir. Descarga la pauta <b>después</b> de dejar lista la configuración.</p>
-    <div class="row"><button class="pri" id="ppPdf">📄 Descargar pauta de problemas</button><button class="ghost" id="ppNew">🎲 Asignar los problemas siguientes</button><button class="ghost" id="mClose">Cerrar</button></div>`);
+    <p>Cada ronda tiene una <b>lista ordenada</b> de problemas del banco Preliminares (hasta 5), y la final, una del banco Final. Se juegan los primeros de la lista según la cantidad que configures (hoy: ${z.cP} por ronda y ${z.cF} en la final), así que la pauta sirve aunque cambies la cantidad en el momento.</p>
+    <p>Modo actual: <b>${p.modo==='aleatorio'?'aleatorio (sorteo)':'usuario (propuesta equilibrada, ajustable)'}</b>.</p>
+    ${falta?'<p style="color:#b00020"><b>No alcanzan los problemas del banco</b> para la cantidad configurada: agrega o activa problemas, o baja la cantidad.</p>':''}
+    <p style="font-size:1.3rem">Código de pauta: <b style="font-family:'Baloo 2';font-size:1.8rem;background:var(--gold);padding:0 .4em;border-radius:8px">${pautaCode(lv)}</b></p>
+    <p class="hint" style="font-size:.95rem">El código es el mismo para todas las pautas del nivel y se ve en pantalla antes de cada problema y cada juego. Cambia si cambias el número de rondas o la asignación, o si borras, editas o desactivas un problema asignado; en ese caso hay que reimprimir.</p>
+    <div class="row"><button class="pri" id="ppPdf">📄 Descargar pauta de problemas</button><button class="ghost" id="ppAsig">🎯 Ver y asignar problemas</button><button class="ghost" id="mClose">Cerrar</button></div>`);
   $('#ppPdf').onclick = async ()=>{ toast('Preparando la pauta…'); let blob;
     try{ blob = await buildPautaProbPDF(lv); }catch(e){ toast('No se pudo crear el PDF (revisa la conexión a internet)'); return; }
     window.__lastPDF = blob; saveBlob(`Olimpiadas Middle - Pauta problemas - ${L.nombre}.pdf`, blob); };
-  $('#ppNew').onclick = ()=>confirmBox(`Se asignarán a ${L.nombre} los problemas que siguen en el banco y la pauta impresa anterior dejará de servir. ¿Continuar?`, ()=>{
-    if(session && session.levelId===lv){ toast('Hay una ronda en curso en este nivel: termínala o descártala primero'); return; }
-    const bank = activos(L.preguntas), all = p.pre.flat().concat(p.fin), last = Math.max(-1, ...all.map(t=>bank.findIndex(q=>q.texto===t)));
-    v.prob = {code: rnd(1000,9999), pre:[], fin:[], start: (last+1) % Math.max(1,bank.length)}; probPlan(lv); save(); openPautaProb(); toast('Problemas reasignados'); });
+  $('#ppAsig').onclick = ()=>openAsignar(lv);
+}
+/* ---------- pantalla para ver y asignar los problemas de cada ronda ---------- */
+function openAsignar(lv){
+  const v = niv[lv], L = levelOf(lv), p = probPlan(lv), z = probLens(lv);
+  const by = new Map((L.preguntas||[]).concat(L.final||[]).map(q=>[q.texto,q]));
+  const cols = v.rondas.map((_,i)=>({key:i, tit:`Ronda ${i+1}`, list:p.pre[i]||[], bank:bankPre(lv), n:z.cP, fin:false})).concat([{key:'final', tit:'Final', list:p.fin, bank:bankFin(lv), n:z.cF, fin:true}]);
+  const where = t => { const i = p.pre.slice(0,z.R).findIndex(l=>(l||[]).includes(t)); return i>=0 ? `Ronda ${i+1}` : p.fin.includes(t) ? 'Final' : ''; };
+  const pts = (q,fin) => +q.puntos || lvCfg(lv,fin).problemas.puntos;
+  const short = t => esc(String(t).replace(/\[\[|\]\]/g,'').replace(/\n/g,' ').slice(0,90)) + (String(t).length>90?'…':'');
+  const card = c => { const qs = c.list.map(t=>by.get(t)).filter(Boolean), tot = qs.slice(0,c.n).reduce((a,q)=>a+pts(q,c.fin),0);
+    return `<div class="asg-col"><div class="asg-h"><b>${c.tit}</b><span>${qs.length} en la lista · se juegan ${c.n} · ${tot} pts</span></div>
+      ${qs.map((q,j)=>`<div class="asg-q ${j<c.n?'':'res'}"><span class="n">${j+1}</span><div class="t"><div class="ty">${q.img?'🖼 ':''}${esc(q.tema||'')} · ${pts(q,c.fin)} pt · ${pasos(q)} ${pasos(q)===1?'paso':'pasos'}</div>${short(q.texto)}</div>
+        <button data-mv="${c.key}|${j}|-1" ${j===0?'disabled':''} title="Subir">↑</button><button data-mv="${c.key}|${j}|1" ${j===qs.length-1?'disabled':''} title="Bajar">↓</button><button data-rm="${c.key}|${j}" title="Quitar">✕</button></div>`).join('') || '<p class="hint">Sin problemas</p>'}
+      <select data-add="${c.key}"><option value="">+ Agregar problema…</option>${c.bank.filter(q=>!c.list.includes(q.texto)).map(q=>{ const w = where(q.texto); return `<option value="${esc(q.texto)}">${w?'['+w+'] ':''}${esc(q.tema||'')} · ${pts(q,c.fin)} pt — ${short(q.texto).slice(0,60)}</option>`; }).join('')}</select></div>`; };
+  modal(`<div class="asg"><h2>Problemas de cada ronda · ${esc(L.nombre)}</h2>
+    <p class="hint">Modo: <b>${p.modo==='aleatorio'?'aleatorio':'usuario'}</b>. Se juegan los primeros de cada lista (los demás quedan de reserva, atenuados). Entre corchetes, los problemas que ya están en otra ronda. Las rondas salen del banco Preliminares; la final, del banco Final.</p>
+    <div class="row"><button class="ghost" id="asProp">⚖ Propuesta equilibrada</button><button class="ghost" id="asSort">🎲 Sortear al azar</button><button class="pri" id="asPdf">📄 Pauta de problemas</button><button class="ghost" id="mClose">Cerrar</button></div>
+    <div class="asg-grid">${cols.map(card).join('')}</div></div>`);
+  const listOf = k => k==='final' ? p.fin : (p.pre[+k] = p.pre[+k]||[]);
+  const touch = ()=>{ p.modo = 'usuario'; p.code = rnd(1000,9999); save(); openAsignar(lv); };
+  $('#modal').querySelectorAll('[data-mv]').forEach(b=>b.onclick=()=>{ const [k,j,d]=b.dataset.mv.split('|'), l=listOf(k), i=+j, t=i+(+d); [l[i],l[t]]=[l[t],l[i]]; touch(); });
+  $('#modal').querySelectorAll('[data-rm]').forEach(b=>b.onclick=()=>{ const [k,j]=b.dataset.rm.split('|'); listOf(k).splice(+j,1); touch(); });
+  $('#modal').querySelectorAll('[data-add]').forEach(s=>s.onchange=()=>{ if(!s.value) return; const k=s.dataset.add, l=listOf(k);
+    const w = where(s.value); if(w){ p.pre.forEach(x=>{ if(x){ const i=x.indexOf(s.value); if(i>=0) x.splice(i,1); } }); const i=p.fin.indexOf(s.value); if(i>=0) p.fin.splice(i,1); toast(`Se movió desde ${w}`); }
+    l.push(s.value); touch(); });
+  const redo = (fn, modo, msg) => { if(session && session.levelId===lv){ toast('Hay una ronda en curso en este nivel: termínala o descártala primero'); return; }
+    confirmBox(`${msg} La pauta impresa anterior dejará de servir. ¿Continuar?`, ()=>{ const r = fn(lv); v.prob = {v:2, code:rnd(1000,9999), modo, pre:r.pre, fin:r.fin}; save(); openAsignar(lv); }); };
+  $('#asProp').onclick = ()=>redo(probPropuesta, 'usuario', `Se armará de nuevo la propuesta equilibrada de ${L.nombre} y se perderán los cambios hechos a mano.`);
+  $('#asSort').onclick = ()=>redo(probSorteo, 'aleatorio', `Se sortearán de nuevo los problemas de ${L.nombre}.`);
+  $('#asPdf').onclick = async ()=>{ toast('Preparando la pauta…'); let blob;
+    try{ blob = await buildPautaProbPDF(lv); }catch(e){ toast('No se pudo crear el PDF (revisa la conexión a internet)'); return; }
+    window.__lastPDF = blob; saveBlob(`Olimpiadas Middle - Pauta problemas - ${L.nombre}.pdf`, blob); };
+}
+/* ---------- pauta completa del nivel: todos los juegos de cada ronda ---------- */
+const prim = (n, fem) => n===1 ? (fem ? 'se juega la primera' : 'se juega el primero') : (fem ? `se juegan las primeras ${n}` : `se juegan los primeros ${n}`);
+async function buildPautaNivelPDF(lv){
+  const J = await loadJsPDF(), v = niv[lv], L = levelOf(lv), code = pautaCode(lv);
+  const doc = new J({unit:'mm', format:'letter'}), K = pdfKit(doc, 16), TITLE = 'Olimpiadas Middle - Pauta del nivel';
+  const fs = nextRound(lv)<0 ? finalists(lv) : [];
+  const P = s => plainOp(s);
+  const NAME = {calc:'Cálculo mental contra reloj', cadena:'Cadena mental', magico:'Cuadrado mágico', recta:'Recta numérica', kakooma:'Kakoomas', problemas:'Problemas'};
+  const secciones = v.rondas.map((_,i)=>({ri:i, fin:false, tit:`Ronda ${i+1}`, names:v.rondas[i].jug.map((_,k)=>rName(lv,i,k)), juegos:v.juegos}));
+  if(v.rondas.length>1){ const k = fs.length || v.rondas.length; secciones.push({ri:'final', fin:true, tit:'Ronda final', names:Array.from({length:k},(_,j)=>fs[j] ? fs[j].name : `Ganador ronda ${j+1}`), juegos:v.juegosFin}); }
+  let first = true;
+  for(const S of secciones){
+    if(!first) K.newPage(); first = false;
+    if(S.ri===0) await K.header(TITLE, `${L.nombre} · Todos los juegos de cada ronda con sus respuestas · Solo para el conductor`, `En cada juego se usan los primeros de la lista, según la cantidad configurada · ${new Date().toLocaleDateString('es-CL')}`, code);
+    const cfgS = lvCfg(lv, S.fin), G = genRound(lv, S.ri);
+    K.band(`${S.tit} · ${S.names.join(', ')}`);
+    for(const a of S.juegos){
+      const c = cfgS[a];
+      if(a==='calc'){
+        const turns = calcTurns(lv, S.ri).slice(0, S.names.length);
+        K.sub(`${NAME[a]} · turnos de ${c.tiempo} s · ${c.puntos} ${c.puntos===1?'punto':'puntos'} por acierto`);
+        const cols = turns.length, cw = K.CW/cols, lh = 4.4;
+        const head = cont => { K.need(12); doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(...PDFC.NAVY);
+          turns.forEach((_,ci)=>doc.text(doc.splitTextToSize(`Turno ${ci+1}: ${pdfText(S.names[ci])}${cont?' (cont.)':''}`, cw-3)[0], K.M+ci*cw, K.y)); K.y += 5; };
+        head(false);
+        const len = Math.max(...turns.map(t=>t.length));
+        for(let r=0;r<len;r++){
+          if(K.y + lh > K.H - K.M){ K.newPage(); head(true); }
+          turns.forEach((t,ci)=>{ const o = t[r]; if(!o) return; const x = K.M + ci*cw, e = P(o.expr)+' = ';
+            doc.setFont('helvetica','normal'); doc.setFontSize(cols>3?8.4:9.2); doc.setTextColor(...PDFC.GREY); doc.text(`${r+1}.`, x+6, K.y, {align:'right'});
+            doc.setTextColor(30,30,30); doc.text(e, x+7.5, K.y); doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.GREEN); doc.text(P(o.ans), x+7.5+doc.getTextWidth(e), K.y); });
+          K.y += lh;
+        }
+        K.y += 5;
+      }
+      else if(a==='cadena'){
+        K.sub(`${NAME[a]} · ${prim(c.cantidad,true)} · ${c.puntos} ${c.puntos===1?'punto':'puntos'}`);
+        (G.cadena||[]).forEach((q,k)=>{ K.need(6); const t = `${k+1}.  ${N(q.start)}   ` + q.steps.map(s=>`${s.op} ${N(s.v)}`).join('   ') + '   =  ';
+          doc.setFont('helvetica','normal'); doc.setFontSize(10.5); doc.setTextColor(k<c.cantidad?30:140, k<c.cantidad?30:140, k<c.cantidad?30:140); doc.text(P(t), K.M+2, K.y);
+          doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.GREEN); doc.text(N(q.ans), K.M+2+doc.getTextWidth(P(t)), K.y); K.y += 5.6; });
+        K.y += 3;
+      }
+      else if(a==='magico'){
+        K.sub(`${NAME[a]} · ${prim(c.cantidad)} · ${c.puntos} ${c.puntos===1?'punto':'puntos'}`);
+        const cs = 9;
+        (G.magico||[]).forEach((m,k)=>{
+          K.need(cs*3+6); const x0 = K.M+10, y0 = K.y;
+          doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...PDFC.NAVY); doc.text(`${k+1}.`, K.M, y0+5);
+          m.sol.forEach((q,pidx)=>{ const r = Math.floor(pidx/3), cc = pidx%3, h = m.oculto.indexOf(pidx), x = x0+cc*cs, y = y0+r*cs;
+            doc.setDrawColor(...PDFC.NAVY); doc.setLineWidth(.3); if(h>=0){ doc.setFillColor(255,246,200); doc.rect(x,y,cs,cs,'FD'); } else doc.rect(x,y,cs,cs);
+            doc.setFont('helvetica', h>=0?'bold':'normal'); doc.setFontSize(9); doc.setTextColor(h>=0?180:30, h>=0?100:30, h>=0?0:30);
+            doc.text(h>=0 ? 'ABCDEFGHIJ'[h] : P(qH(q, m.modo)), x+cs/2, y+cs/2+1.3, {align:'center'}); });
+          const tx = x0+3*cs+6;
+          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(...PDFC.GREY);
+          doc.text(`${m.op==='mul'?'Producto':'Suma'} mágica: ${P(qH(m.S, m.modo))}${k<c.cantidad?'':'   (reserva)'}`, tx, y0+5);
+          doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.GREEN);
+          doc.text(doc.splitTextToSize('Solución: ' + m.oculto.map((pidx,h)=>`${'ABCDEFGHIJ'[h]} = ${P(qH(m.sol[pidx], m.modo))}`).join('   ·   '), K.W-K.M-tx), tx, y0+11);
+          K.y = y0 + cs*3 + 5; });
+        K.y += 2;
+      }
+      else if(a==='recta'){
+        K.sub(`${NAME[a]} · ${c.cantidad} ${c.cantidad===1?'número':'números'} por jugador · 3, 2 o 1 punto según cercanía`);
+        (G.recta||[]).slice(0, S.names.length).forEach((t,ti)=>{
+          K.need(10); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...PDFC.NAVY); doc.text(`Turno ${ti+1}: ${pdfText(S.names[ti])}`, K.M, K.y); K.y += 5.2;
+          t.forEach((r,k)=>{ K.need(5.4); doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(k<c.cantidad?30:140, k<c.cantidad?30:140, k<c.cantidad?30:140);
+            const desc = `${k+1}.  Número ${P(r.numH)}  ·  recta de ${P(r.labels[0].t)} a ${P(r.labels[r.labels.length-1].t)}, ${r.div} partes de ${P(r.stepH)}  ·  va en la `;
+            doc.text(desc, K.M+4, K.y); doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.GREEN); doc.text(`marca ${r.mark} de ${r.div}`, K.M+4+doc.getTextWidth(desc), K.y); K.y += 5.2; });
+          K.y += 1.5; });
+        K.y += 2;
+      }
+      else if(a==='kakooma'){
+        K.sub(`${NAME[a]} · ${prim(c.cantidad)} · ${c.puntos} ${c.puntos===1?'punto':'puntos'}`);
+        (G.kakooma||[]).forEach((g,k)=>{
+          K.need(6*4+2); doc.setFont('helvetica','bold'); doc.setFontSize(10.5); doc.setTextColor(...PDFC.NAVY); doc.text(`Grupo ${k+1}${k<c.cantidad?'':'  (reserva)'}`, K.M, K.y); K.y += 5.2;
+          let tot = Q(0);
+          g.kks.forEach((kk,j)=>{ const vs = kk.vals.map(x=>P(qH(x, kk.modo))); tot = qadd(tot, kk.vals[kk.res]);
+            doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(30,30,30);
+            const d = `Kakooma ${j+1}:  ${vs.join('   ')}   ·   `; doc.text(d, K.M+4, K.y);
+            doc.setTextColor(...PDFC.GREEN); doc.text(`${vs[kk.add[0]]} + ${vs[kk.add[1]]} = ${vs[kk.res]}`, K.M+4+doc.getTextWidth(d), K.y); K.y += 5.2; });
+          doc.setFont('helvetica','bold'); doc.setTextColor(...PDFC.GREEN); doc.text(`Respuesta (suma de los 3): ${P(qH(tot,'int'))}`, K.M+4, K.y); K.y += 6.5; });
+        K.y += 2;
+      }
+      else if(a==='problemas'){
+        const Q = probRound(lv, S.ri);
+        K.sub(`${NAME[a]} · lista de ${Q.length} · ${prim(c.cantidad)}`);
+        for(let k=0;k<Q.length;k++) await K.problem(Q[k], k+1, lv, S.fin);
+      }
+    }
+  }
+  const D = activos(L.desempate);
+  if(D.length){ K.newPage(); K.band(`Reserva de desempates · ${D.length} problemas`); K.note('Solo se usan si hay empate en el primer lugar. Salen en este orden y se saltan los que ya salieron.'); for(let k=0;k<D.length;k++) await K.problem(D[k], k+1, lv, true); }
+  K.footer(`${TITLE} · ${L.nombre} · Código ${code}`);
+  return doc.output('blob');
+}
+function openPautaNivel(){
+  const lv = cfLv, L = levelOf(lv);
+  modal(`<h2>Pauta completa · ${esc(L.nombre)}</h2>
+    <p>Un solo PDF con todo lo que se hará en cada ronda y en la final: cálculo mental, cadenas, cuadrados mágicos, números de la recta, kakoomas y problemas, cada uno con su respuesta, más la reserva de desempates. Incluye solo los juegos seleccionados para las rondas y para la final.</p>
+    <p>En cada juego hay una lista ordenada y se usan los primeros, según la cantidad configurada: si la cambias en el momento, la pauta sigue sirviendo.</p>
+    <p style="font-size:1.3rem">Código de pauta: <b style="font-family:'Baloo 2';font-size:1.8rem;background:var(--gold);padding:0 .4em;border-radius:8px">${pautaCode(lv)}</b></p>
+    <p class="hint" style="font-size:.95rem">Descárgala con los jugadores ya ingresados, desde el computador del proyector. El código cambia si cambias el número de rondas o de jugadores, las asignaciones de problemas, o si generas operaciones nuevas.</p>
+    <div class="row"><button class="pri" id="pnPdf">📄 Descargar pauta completa</button><button class="ghost" id="mClose">Cerrar</button></div>`);
+  $('#pnPdf').onclick = async ()=>{ toast('Preparando la pauta…'); let blob;
+    try{ blob = await buildPautaNivelPDF(lv); }catch(e){ console.error(e); toast('No se pudo crear el PDF (revisa la conexión a internet)'); return; }
+    window.__lastPDF = blob; saveBlob(`Olimpiadas Middle - Pauta completa - ${L.nombre}.pdf`, blob); };
 }
 function resetRounds(lv){
   const v = niv[lv]; v.rondas.forEach(r=>{ r.res=null; r.aus=[]; r.pref=null; }); v.final=null;
